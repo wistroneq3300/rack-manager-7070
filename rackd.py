@@ -297,6 +297,12 @@ class Handler(BaseHTTPRequestHandler):
                                'user': session.user,
                                'live': rack_term.REGISTRY.live_count()})
 
+        if url.path == '/api/term/close-all':
+            # page teardown path: not under the /{sid}/... router below
+            for sid in (body.get('sids') or []):
+                rack_term.REGISTRY.close(str(sid))
+            return self._json({'ok': True})
+
         if url.path.startswith('/api/term/'):
             rest = url.path[len('/api/term/'):]
             sid, _, what = rest.partition('/')

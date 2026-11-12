@@ -195,8 +195,11 @@ class TerminalSession:
             remaining = deadline - time.time()
             if remaining <= 0:
                 return b'', after
-            self._data_event.wait(min(remaining, 1.0))
+            # Clear before waiting: a write landing between the buffer check
+            # and the wait re-sets the event, so it cannot be missed (which
+            # would otherwise cost a whole poll cycle of latency).
             self._data_event.clear()
+            self._data_event.wait(min(remaining, 2.0))
 
     def write(self, data):
         if not data or self._shell is None:

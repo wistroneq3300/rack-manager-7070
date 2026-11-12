@@ -1312,24 +1312,41 @@ let pending = null;
 // a separate UI-only set so an operator does not lose context on refresh.
 const ACTION_DISCLOSURES = new Set();
 const RACK_ROOT = document.getElementById('rack');
-let RACK_POINTER_ACTIVE = false;
 let RACK_PENDING_DATA = null;
+let RACK_REBUILD_TIMER = null;
+// A poll landing between pointerdown and click swaps the button out from under
+// the user: the click then fires on a node that never saw the press, and the
+// action is silently dropped. Guarding per-pointer was not enough, because the
+// press and its pointerup can both straddle a rebuild -- so guard by time
+// instead, keyed on the last interaction anywhere inside the rack.
+const RACK_QUIET_MS = 600;
+let RACK_LAST_INPUT = 0;
 
-RACK_ROOT.addEventListener('pointerdown', e => {
-  if (e.isPrimary !== false) RACK_POINTER_ACTIVE = true;
-});
-function finishRackPointer(){
-  if (!RACK_POINTER_ACTIVE) return;
-  RACK_POINTER_ACTIVE = false;
-  if (!RACK_PENDING_DATA) return;
-  const next = RACK_PENDING_DATA;
-  RACK_PENDING_DATA = null;
-  // pointerup precedes click; defer the rebuild until the click has reached its
-  // original target so a refresh can never swallow an operator action.
-  setTimeout(() => render(next), 0);
+function rackTouch(e){
+  if (e && e.isPrimary === false) return;
+  RACK_LAST_INPUT = Date.now();
 }
-window.addEventListener('pointerup', finishRackPointer, true);
-window.addEventListener('pointercancel', finishRackPointer, true);
+RACK_ROOT.addEventListener('pointerdown', rackTouch, true);
+RACK_ROOT.addEventListener('click', rackTouch, true);
+RACK_ROOT.addEventListener('keydown', rackTouch, true);
+
+function rackBusy(){
+  return Date.now() - RACK_LAST_INPUT < RACK_QUIET_MS;
+}
+
+/* Rebuild once the rack has been idle for the quiet window. Collapses to a
+   single trailing rebuild, so nothing is lost and nothing thrashes. */
+function scheduleRackRebuild(){
+  if (RACK_REBUILD_TIMER) return;
+  const wait = Math.max(0, RACK_QUIET_MS - (Date.now() - RACK_LAST_INPUT));
+  RACK_REBUILD_TIMER = setTimeout(() => {
+    RACK_REBUILD_TIMER = null;
+    if (rackBusy()){ scheduleRackRebuild(); return; }
+    const next = RACK_PENDING_DATA;
+    RACK_PENDING_DATA = null;
+    if (next) render(next);
+  }, wait + 20);
+}
 
 /* ---------- theme ---------- */
 function applyTheme(mode){
@@ -1464,9 +1481,30 @@ function makeActionMenu(stateKey, label, buttonPrefix, onAction){
   return details;
 }
 
+/* Structural fingerprint: tray ids, node names, and whether each node shows a
+   BF4 row. Status values are deliberately excluded -- they change every poll
+   and must never force a rebuild.
+
+   Rebuilding the rack means replacing every button node. A poll landing
+   between an operator's pointerdown and pointerup swaps the button out and
+   the click is lost, which reads as "the button did nothing". Since the
+   layout is static, only rebuild when the fingerprint actually moves. */
+function rackSignature(data){
+  const parts = [];
+  for (const t of data.trays){
+    parts.push(String(t.tray), esc(t.tray_name), String(t.nodes.length));
+    for (const n of t.nodes){
+      parts.push(n.name, (n.bf4_os_ip || n.bf4_bmc_ip) ? 'b' : '-');
+    }
+  }
+  return parts.join('|');
+}
+let RACK_SIGNATURE = null;
+
 function render(data){
-  if (RACK_POINTER_ACTIVE){
+  if (rackBusy()){
     RACK_PENDING_DATA = data;
+    scheduleRackRebuild();
     return;
   }
   RACK_PENDING_DATA = null;
@@ -1492,6 +1530,107 @@ function render(data){
   document.getElementById('foot-total').textContent = data.summary.nodes;
   document.getElementById('clock').textContent   = data.ts;
 
+  const sig = rackSignature(data);
+  if (sig === RACK_SIGNATURE && RACK_ROOT.firstElementChild){
+    // Same layout: patch the values in place so every button keeps its
+    // identity and no click can be swallowed.
+    patchRack(data);
+    if (focusKey){
+      const again = RACK_ROOT.querySelector(`[data-focus-key="${focusKey}"]`);
+      if (again) again.focus();
+    }
+    return;
+  }
+  RACK_SIGNATURE = sig;
+  buildRack(data, focusKey);
+}
+
+/* In-place update for an unchanged layout. Only values change; element
+   identity is preserved so an in-flight click always lands on a live node. */
+function patchRack(data){
+  for (const t of data.trays){
+    const box = RACK_ROOT.querySelector(`.tray[data-tray="${t.tray}"]`);
+    if (!box) continue;
+    const upCount  = t.nodes.filter(n => n.os_up).length;
+    const bmcCount = t.nodes.filter(n => n.bmc_up).length;
+
+    const meta = box.querySelector('.tray-meta');
+    if (meta){
+      meta.innerHTML = healthSummary('OS', upCount, t.nodes.length)
+        + healthSummary('BMC', bmcCount, t.nodes.length);
+    }
+
+    for (const n of t.nodes){
+      const cell = box.querySelector(`.node[data-node="${CSS.escape(n.name)}"]`);
+      if (!cell) continue;
+      patchNodeCell(cell, n);
+    }
+  }
+  renderShelves(data);
+}
+
+function patchNodeCell(cell, n){
+  // IPs / MACs
+  const setLine = (kind, ip, mac, up) => {
+    const v = cell.querySelector(`.node-ips .v[data-for="${kind}"]`)?.parentElement;
+    const span = cell.querySelector(`.node-ips [data-for="${kind}"]`);
+    if (!span) return;
+    const isBf4 = kind.startsWith('bf4');
+    span.innerHTML = (isBf4 ? bf4Addr(ip, up) : esc(ip))
+      + (mac ? `<span class="mac">${esc(mac)}</span>` : '');
+  };
+  setLine('os', n.os_ip, n.os_mac, n.os_up);
+  setLine('bmc', n.bmc_ip, n.bmc_mac, n.bmc_up);
+  setLine('bf4_os', n.bf4_os_ip, n.bf4_os_mac, n.bf4_os_up);
+  setLine('bf4_bmc', n.bf4_bmc_ip, n.bf4_bmc_mac, n.bf4_bmc_up);
+
+  // hostname row
+  const hostEl = cell.querySelector('.node-host');
+  const hostDiffers = n.os_hostname && n.os_hostname !== n.name;
+  const wantHost = !n.os_hostname || hostDiffers;
+  if (wantHost && !hostEl){
+    const div = el('div', 'node-host', n.os_hostname
+      ? `<span class="k">host</span><span class="v host-mismatch" title="OS 自報的 hostname 與清單名稱不一致">${esc(n.os_hostname)}</span>`
+      : `<span class="k">host</span><span class="host-unknown">未取得</span>`);
+    cell.querySelector('.node-ips').after(div);
+  } else if (!wantHost && hostEl){
+    hostEl.remove();
+  } else if (hostEl){
+    hostEl.innerHTML = n.os_hostname
+      ? `<span class="k">host</span><span class="v host-mismatch" title="OS 自報的 hostname 與清單名稱不一致">${esc(n.os_hostname)}</span>`
+      : `<span class="k">host</span><span class="host-unknown">未取得</span>`;
+  }
+
+  // state chips
+  const stateEl = cell.querySelector('.node-state');
+  if (stateEl){
+    const powerClass = n.power === 'On' ? 'power-on'
+      : n.power === 'Off' ? 'power-off' : 'is-unknown';
+    const chips = stateEl.querySelectorAll('.state-chip');
+    const apply = (chip, up, label, value, cls) => {
+      if (!chip) return;
+      chip.className = `state-chip ${cls}`;
+      const v = chip.querySelector('.state-value');
+      if (v) v.textContent = value;
+    };
+    apply(chips[0], n.os_up, 'OS', n.os_up ? 'Online' : 'Offline',
+          n.os_up ? 'is-up' : 'is-down');
+    apply(chips[1], n.bmc_up, 'BMC', n.bmc_up ? 'Online' : 'Offline',
+          n.bmc_up ? 'is-up' : 'is-down');
+    apply(chips[2], n.power === 'On', 'Power', n.power, powerClass);
+    // The coloured dot is the chip's first child; only its class matters.
+    const dotOf = (chip, kind) => {
+      const d = chip && chip.querySelector('.dot');
+      if (d) d.className = `dot ${kind}`;
+    };
+    dotOf(chips[0], n.os_up ? 'on' : 'off');
+    dotOf(chips[1], n.bmc_up ? 'on' : 'off');
+    dotOf(chips[2], n.power === 'On' ? 'on' : n.power === 'Off' ? 'off' : 'unknown');
+  }
+}
+
+function buildRack(data, focusKey){
+
   const rack = RACK_ROOT;
   rack.innerHTML = '';
 
@@ -1500,6 +1639,7 @@ function render(data){
     const bmcCount = t.nodes.filter(n => n.bmc_up).length;
 
     const box = el('div', 'tray');
+    box.dataset.tray = String(t.tray);
     const head = el('div', 'tray-head');
     head.appendChild(el('div', 'tray-name', esc(t.tray_name)));
     head.appendChild(el('div', 'tray-meta',
@@ -1548,6 +1688,7 @@ function render(data){
     const grid = el('div', 'nodes');
     for (const n of t.nodes){
       const cell = el('div', 'node');
+      cell.dataset.node = n.name;
       const idRow = el('div', 'node-id', `<span>${esc(n.name)}</span>`);
       const hwBtn = el('button', 'hw-btn', 'HW/FW');
       hwBtn.dataset.focusKey = `node:${n.name}:hw`;
@@ -1557,9 +1698,11 @@ function render(data){
       cell.appendChild(idRow);
       // Each MAC trails its own IP on the same line, small and faint: it
       // identifies the port, it is not a second address to read.
-      const ipCell = (ip, mac) => `<span class="v">${ip}`
+      const ipCell = (ip, mac, kind) =>
+        `<span class="v" data-for="${kind || ''}">${ip}`
         + (mac ? `<span class="mac">${esc(mac)}</span>` : '') + `</span>`;
-      const bf4Cell = (ip, up, mac) => `<span class="v bf4-v">${bf4Addr(ip, up)}`
+      const bf4Cell = (ip, up, mac, kind) =>
+        `<span class="v bf4-v" data-for="${kind || ''}">${bf4Addr(ip, up)}`
         + (mac ? `<span class="mac">${esc(mac)}</span>` : '') + `</span>`;
 
       // The label column doubles as the terminal launcher: click a target
@@ -1571,11 +1714,11 @@ function render(data){
         + `<span>${label}</span></button>`;
 
       cell.appendChild(el('div', 'node-ips',
-        termBtn('os', 'OS') + ipCell(esc(n.os_ip), n.os_mac)
-        + termBtn('bmc', 'BMC') + ipCell(esc(n.bmc_ip), n.bmc_mac)
+        termBtn('os', 'OS') + ipCell(esc(n.os_ip), n.os_mac, 'os')
+        + termBtn('bmc', 'BMC') + ipCell(esc(n.bmc_ip), n.bmc_mac, 'bmc')
         + (n.bf4_os_ip || n.bf4_bmc_ip
-          ? termBtn('bf4_os', 'BF4 OS', 'bf4-k') + bf4Cell(n.bf4_os_ip, n.bf4_os_up, n.bf4_os_mac)
-            + termBtn('bf4_bmc', 'BF4 BMC', 'bf4-k') + bf4Cell(n.bf4_bmc_ip, n.bf4_bmc_up, n.bf4_bmc_mac)
+          ? termBtn('bf4_os', 'BF4 OS', 'bf4-k') + bf4Cell(n.bf4_os_ip, n.bf4_os_up, n.bf4_os_mac, 'bf4_os')
+            + termBtn('bf4_bmc', 'BF4 BMC', 'bf4-k') + bf4Cell(n.bf4_bmc_ip, n.bf4_bmc_up, n.bf4_bmc_mac, 'bf4_bmc')
           : '')));
       // Only worth a row when it disagrees with the name this card already
       // shows. A node that names itself "localhost-n3" is the case that
@@ -4097,7 +4240,7 @@ function termBuildGroupPane(group, j, p){
   entry.sendRaw = (text) => {
     if (entry.gone || !text) return;
     pending.push(new TextEncoder().encode(text));
-    if (!flushTimer) flushTimer = setTimeout(flushPending, 12);
+    if (!flushTimer) flushTimer = setTimeout(flushPending, 4);
   };
   const flushPending = () => {
     flushTimer = null;
@@ -4306,7 +4449,7 @@ async function termOpen(node, kind, btn){
   entry.sendRaw = (text) => {
     if (entry.gone || !text) return;
     pending.push(new TextEncoder().encode(text));
-    if (!flushTimer) flushTimer = setTimeout(flushPending, 12);
+    if (!flushTimer) flushTimer = setTimeout(flushPending, 4);
   };
   const flushPending = () => {
     flushTimer = null;
@@ -4336,8 +4479,13 @@ function termClose(entry, opts){
   const silent = opts && opts.silent;
   entry.gone = true;
   if (entry.sid){
-    fetch(`/api/term/${entry.sid}/close`, {method:'POST',
-      headers:{'Content-Type':'application/json'}, body:'{}'}).catch(() => {});
+    // keepalive lets the request outlive the page teardown; a plain fetch can
+    // be cancelled by the browser and the sshd side then lingers.
+    try {
+      fetch(`/api/term/${entry.sid}/close`, {method:'POST',
+        headers:{'Content-Type':'application/json'}, body:'{}',
+        keepalive:true}).catch(() => {});
+    } catch (_){}
     TERM.wins.delete(entry.sid);
   }
   TERM.openKeys.delete(`${entry.node}|${entry.kind}`);
@@ -4347,6 +4495,30 @@ function termClose(entry, opts){
   termRenderDock();
   document.dispatchEvent(new CustomEvent('term:changed'));
 }
+
+/* Best-effort flush for sessions that are still open when the page goes
+   away (reload, tab close). Without this the sshd side lingers until the
+   idle reaper fires an hour later. */
+function termCloseAll(sync){
+  const sids = [];
+  for (const entry of Array.from(TERM.wins.values())){
+    if (entry.isGroupRoot){
+      for (const e of entry.group.entries) if (e.sid) sids.push(e.sid);
+    } else if (entry.sid){
+      sids.push(entry.sid);
+    }
+  }
+  const body = JSON.stringify({sids});
+  if (sync && navigator.sendBeacon){
+    try { navigator.sendBeacon('/api/term/close-all',
+      new Blob([body], {type:'application/json'})); } catch (_){}
+  } else {
+    try { fetch('/api/term/close-all', {method:'POST',
+      headers:{'Content-Type':'application/json'}, body, keepalive:true}); } catch (_){}
+  }
+}
+window.addEventListener('pagehide', () => termCloseAll(true));
+window.addEventListener('beforeunload', () => termCloseAll(false));
 
 /* Theme flips need every open terminal repainted; xterm themes are not CSS. */
 function termRepaintTheme(){
