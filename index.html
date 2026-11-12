@@ -704,6 +704,28 @@ input:disabled,select:disabled{
   border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg)}
 .tray-actions .actions-panel button{font-size:11.5px}
 
+/* Broadcast launcher: one tray in, one tray out. */
+.bc-menu{position:relative}
+.bc-btn{
+  min-height:32px;padding:6px 12px;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg-panel-2);color:var(--text-dim);font-size:11.5px;font-weight:650
+}
+.bc-btn:hover:not(:disabled){border-color:var(--accent);background:var(--accent-bg);color:var(--accent-strong)}
+.bc-panel{
+  position:absolute;right:0;top:38px;z-index:13;width:186px;padding:6px;
+  display:none;background:var(--bg-panel);border:1px solid var(--border);
+  border-radius:10px;box-shadow:var(--shadow-lg)
+}
+.bc-panel.open{display:block}
+.bc-panel button{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+  min-height:32px;padding:6px 9px;margin:0;border:none;border-radius:6px;
+  background:transparent;color:var(--text-dim);font-size:12px
+}
+.bc-panel button:hover:not(:disabled){background:var(--accent-bg);color:var(--accent-strong);border:none}
+.bc-panel .bc-lbl{font-weight:600}
+.bc-panel .bc-count{font-size:10.5px;color:var(--text-faint)}
+
 .badge{min-height:26px;padding:4px 8px;border-radius:6px;font-size:11.5px}
 .badge.on{border-color:color-mix(in srgb,var(--green) 54%,var(--border))}
 .badge.off{color:var(--text-dim);border-color:var(--border-soft)}
@@ -829,6 +851,50 @@ input:disabled,select:disabled{
   background:var(--bg-panel);color:var(--text-dim)
 }
 .term-dock button:hover{border-color:var(--accent);color:var(--accent-strong)}
+
+/* ===========================================================================
+   Broadcast group: one window holding the four nodes of a tray, 2x2.
+   One pane is the master; its keystrokes are mirrored to the others. Also
+   non-modal -- the rack stays usable behind it, same as a single terminal.
+   =========================================================================== */
+.term-win.is-group{width:min(1500px,94vw);height:min(760px,86vh);min-width:760px;min-height:420px}
+.term-group-body{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;
+  grid-template-rows:1fr 1fr;gap:1px;background:var(--border-soft);padding:1px}
+.term-pane{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--bg);
+  position:relative;overflow:hidden}
+.term-pane-head{
+  display:flex;align-items:center;gap:8px;padding:3px 10px;flex:none;
+  background:var(--bg-panel-2);border-bottom:1px solid var(--border-soft);
+  font-size:11px;color:var(--text-faint);user-select:none;cursor:pointer
+}
+.term-pane-head .pname{font-weight:650;color:var(--text-dim);white-space:nowrap}
+.term-pane-head .pstat{margin-left:auto;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.term-pane.is-master{box-shadow:inset 3px 0 0 var(--accent)}
+.term-pane.is-master .pname{color:var(--accent-strong)}
+.term-pane.is-master .term-pane-head{background:var(--accent-bg)}
+.term-pane-badge{
+  font-size:9.5px;font-weight:700;letter-spacing:.5px;padding:1px 5px;border-radius:4px;
+  background:var(--accent);color:var(--accent-ink)
+}
+.term-pane-badge.sync{background:var(--bg-hover);color:var(--text-faint)}
+.term-pane-badge.dead{background:var(--red-bg);color:var(--red)}
+.term-pane-body{flex:1;min-height:0;padding:4px 2px 2px 8px}
+
+.group-toggle{
+  display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:3px 9px;
+  border:1px solid var(--border-soft);border-radius:7px;background:var(--bg-panel-2);
+  font-size:11px;color:var(--text-dim);cursor:pointer;user-select:none
+}
+.group-toggle:hover{border-color:var(--accent);color:var(--accent-strong)}
+.group-toggle input{accent-color:var(--accent);width:13px;height:13px;cursor:pointer}
+.group-toggle.off{opacity:.75}
+.term-bar .bc-tag{
+  font-size:10px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:5px;
+  background:var(--amber-bg);color:var(--amber);
+  border:1px solid color-mix(in srgb,var(--amber) 42%,transparent)
+}
+.term-bar .bc-tag.live{background:var(--accent-bg);color:var(--accent-strong);
+  border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
 .add-table{font-size:13px;margin-bottom:16px}
 .add-table th{padding:9px 10px;font-size:11px;color:var(--text-dim)}
 .add-table td{padding:8px 10px}.add-table td input{min-height:35px;font-size:12.5px}
@@ -1441,6 +1507,33 @@ function render(data){
       + healthSummary('BMC', bmcCount, t.nodes.length)));
 
     const acts = el('div', 'tray-actions');
+    // One broadcast group per tray: the four nodes of this tray, for one
+    // target kind. Deliberately not rack-wide -- a mistyped command on 56
+    // shells is not recoverable.
+    const bcWrap = el('div', 'bc-menu');
+    const bcBtn = el('button', 'bc-btn', '廣播');
+    bcBtn.title = `在本 Tray 的 ${t.nodes.length} 個 node 上同步終端輸入`;
+    bcBtn.onclick = (e) => {
+      e.stopPropagation();
+      const menu = bcWrap.querySelector('.bc-panel');
+      menu.classList.toggle('open');
+    };
+    const bcPanel = el('div', 'bc-panel');
+    for (const [kind, label] of [['os','OS'], ['bmc','BMC'],
+                                 ['bf4_os','BF4 OS'], ['bf4_bmc','BF4 BMC']]){
+      const b = el('button', '', `<span class="bc-lbl">${label}</span>`
+        + `<span class="bc-count">${t.nodes.length} 台</span>`);
+      b.onclick = (e) => {
+        e.stopPropagation();
+        bcPanel.classList.remove('open');
+        termGroupOpen(t.tray, t.tray_name, kind, label,
+                      t.nodes.map(n => n.name));
+      };
+      bcPanel.appendChild(b);
+    }
+    bcWrap.appendChild(bcBtn);
+    bcWrap.appendChild(bcPanel);
+    acts.appendChild(bcWrap);
     acts.appendChild(makeActionMenu(`tray:${t.tray}`, 'Tray actions', 'Tray ', (key, a) => {
       confirmAction({
         kind:'tray', tray:t.tray, action:key,
@@ -3652,7 +3745,20 @@ function termBuildWindow(entry){
     return true;
   });
 
-  term.onData(d => entry.sendRaw(d));
+  // Input goes to this window, and to its peers when it is the broadcast
+  // master. Peer writes bypass their own hook so a group can never loop.
+  term.onData(d => {
+    entry.sendRaw(d);
+    if (entry.group && entry.group.active && entry === entry.group.master){
+      for (const peer of entry.group.entries){
+        if (peer !== entry && !peer.gone) peer.sendRaw(d);
+      }
+    }
+  });
+  // Clicking a pane makes it the master: whatever you type goes from here.
+  body.addEventListener('pointerdown', () => {
+    if (entry.group) termGroupSetMaster(entry);
+  }, true);
   term.onResize(({cols, rows}) => {
     entry.sizeEl.textContent = `${cols}×${rows}`;
     termPushResize(entry, cols, rows);
@@ -3730,7 +3836,17 @@ function termRenderDock(){
     if (!entry.win.classList.contains('is-min')) continue;
     const b = el('button', '', `<span class="term-dot ${entry.alive === false ? 'dead' : 'live'}"></span>`
       + `${esc(entry.node)} · ${esc(entry.label)}`);
-    b.onclick = () => termMinimize(entry, false);
+    b.onclick = () => {
+      if (entry.isGroupRoot) entry.win.classList.remove('is-min');
+      else termMinimize(entry, false);
+      termRaise(entry);
+      termRenderDock();
+      requestAnimationFrame(() => {
+        if (entry.group && entry.group.entries){
+          for (const e of entry.group.entries){ try { e.fit && e.fit.fit(); } catch (_){} }
+        } else { try { entry.fit.fit(); } catch (_){} }
+      });
+    };
     dock.appendChild(b);
   }
 }
@@ -3807,6 +3923,346 @@ function termDie(entry, reason){
   dead.appendChild(again);
   entry.win.appendChild(dead);
   termRenderDock();
+}
+
+/* ---------- broadcast group ---------- */
+
+/* Build one group per (tray, kind). Opening it connects every node in that
+   tray; a node that will not answer gets a dead pane instead of taking the
+   whole group down. */
+async function termGroupOpen(tray, trayName, kind, label, nodeNames){
+  termEnsureLayer();
+  const gkey = `${tray}|${kind}`;
+  if (TERM.groups && TERM.groups.has(gkey)){
+    const g = TERM.groups.get(gkey);
+    if (g.win.classList.contains('is-min')) termMinimize(g.root, false);
+    termRaise(g.root);
+    return;
+  }
+  TERM.groups = TERM.groups || new Map();
+
+  const group = {
+    key: gkey, tray, trayName, kind, label,
+    entries: [], master: null, active: true, root: null,
+  };
+
+  /* --- window shell --- */
+  const win = el('div', 'term-win is-group');
+  const bar = el('div', 'term-bar');
+  bar.innerHTML = `
+    <span class="term-dot" data-role="dot"></span>
+    <div class="term-title">
+      <span class="bc-tag live">廣播</span>
+      <span class="who">${esc(trayName)}</span>
+      <span class="kind ${kind.includes('bmc') ? 'is-bmc' : ''}">${esc(label)}</span>
+      <span class="addr" data-role="master">Master：—</span>
+    </div>
+    <label class="group-toggle" title="取消後只控制 Master 那一格">
+      <input type="checkbox" data-act="sync" checked><span data-role="synclbl">同步</span>
+    </label>
+    <div class="term-btns">
+      <button data-act="min" title="最小化" aria-label="最小化">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+      </button>
+      <button data-act="close" class="close" title="全部關閉" aria-label="全部關閉">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>`;
+  win.appendChild(bar);
+
+  const body = el('div', 'term-group-body');
+  win.appendChild(body);
+
+  const foot = el('div', 'term-foot');
+  foot.innerHTML = `
+    <span data-role="state">連線中…</span>
+    <span class="sep">·</span>
+    <span data-role="count">0/${nodeNames.length}</span>
+    <span class="sep">·</span>
+    <span>點哪一格，那一格就是 Master</span>
+    <span class="hint">
+      <span>雙擊選詞</span><span class="sep">·</span>
+      <span>右鍵貼上（同步送出）</span>
+    </span>`;
+  win.appendChild(foot);
+
+  const root = { win, node: trayName, kind, label: `${label} 廣播`,
+                 group: null, isGroupRoot: true };
+  group.root = root;
+  root.group = group;
+
+  TERM.layer.appendChild(win);
+  TERM.groups.set(gkey, group);
+  group.win = win;
+  group.dot = bar.querySelector('[data-role="dot"]');
+  group.stateEl = foot.querySelector('[data-role="state"]');
+  group.countEl = foot.querySelector('[data-role="count"]');
+  group.masterEl = bar.querySelector('[data-role="master"]');
+  group.syncBox = bar.querySelector('[data-act="sync"]');
+  group.syncLbl = bar.querySelector('[data-role="synclbl"]');
+  group.nodeCount = nodeNames.length;
+
+  group.syncBox.onchange = () => termGroupSetSync(group, group.syncBox.checked);
+  bar.querySelector('[data-act="close"]').onclick = () => termGroupClose(group);
+  bar.querySelector('[data-act="min"]').onclick = () => {
+    // The group has no single term to fit; toggle the class directly.
+    win.classList.toggle('is-min');
+    if (!win.classList.contains('is-min')){
+      termRaise(root);
+      requestAnimationFrame(() => {
+        for (const e of group.entries) { try { e.fit.fit(); } catch (_){} }
+      });
+    }
+    termRenderDock();
+  };
+  termMakeDraggable(win, bar);
+  win.addEventListener('pointerdown', () => termRaise(root), true);
+
+  // Mirror the single-terminal window contract so dock/minimise work.
+  root.win = win;
+  root.alive = true;
+  TERM.wins.set(gkey, root);
+
+  termPlace(root);
+  termRaise(root);
+  termButtonStateForGroup(group, true);
+
+  /* --- panes --- */
+  const panes = [];
+  for (const name of nodeNames){
+    const pane = el('div', 'term-pane');
+    pane.innerHTML = `
+      <div class="term-pane-head">
+        <span class="pname">${esc(name)}</span>
+        <span class="pstat">
+          <span class="term-pane-badge sync" data-role="badge">連線中</span>
+        </span>
+      </div>
+      <div class="term-pane-body"></div>`;
+    body.appendChild(pane);
+    panes.push({ pane, name, body: pane.querySelector('.term-pane-body'),
+                 badge: pane.querySelector('[data-role="badge"]') });
+  }
+
+  /* --- connect every node in parallel: four sequential SSH logins would
+     take four times as long before the first pane shows anything. --- */
+  await Promise.all(panes.map(async p => {
+    let j = null;
+    try {
+      const res = await fetch('/api/term/open', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({node: p.name, kind}),
+      });
+      j = await res.json();
+    } catch (e){ j = {ok:false, error:String(e)}; }
+
+    if (!j || !j.ok){
+      p.badge.className = 'term-pane-badge dead';
+      p.badge.textContent = '連線失敗';
+      p.pane.classList.add('is-dead');
+      p.body.innerHTML = `<div class="term-dead" style="border-top:none;background:transparent">`
+        + `<strong>${esc(j && j.error || '無法連線')}</strong></div>`;
+      group.entries.push({ dead:true, node:p.name, group, gone:true,
+                           sendRaw: () => {} });
+      return;
+    }
+
+    const entry = termBuildGroupPane(group, j, p);
+    group.entries.push(entry);
+  }));
+  // Pane order must match node order in the painted grid, and the master is
+  // chosen only once every connection has settled.
+  group.entries.sort((a, b) =>
+    nodeNames.indexOf(a.node) - nodeNames.indexOf(b.node));
+  const firstLive = group.entries.find(e => !e.gone);
+  if (firstLive) termGroupSetMaster(firstLive, true);
+
+  const live = group.entries.filter(e => !e.gone).length;
+  group.countEl.textContent = `${live}/${nodeNames.length}`;
+  termSetStateGroup(group, live ? '已連線' : '全部連線失敗',
+                    live === nodeNames.length ? 'live' : (live ? '' : 'dead'));
+  document.dispatchEvent(new CustomEvent('term:changed'));
+}
+
+/* One pane inside a group: an xterm wired to the same transport as a
+   standalone window, but its input fan-out goes through the group. */
+function termBuildGroupPane(group, j, p){
+  const entry = {
+    sid: j.sid, node: j.node || p.name, kind: group.kind, label: j.label,
+    host: j.host, user: j.user, group, gone: false,
+    isPane: true, paneEl: p.pane, badgeEl: p.badge,
+  };
+
+  let pending = [], flushTimer = null;
+  entry.sendRaw = (text) => {
+    if (entry.gone || !text) return;
+    pending.push(new TextEncoder().encode(text));
+    if (!flushTimer) flushTimer = setTimeout(flushPending, 12);
+  };
+  const flushPending = () => {
+    flushTimer = null;
+    if (!pending.length || entry.gone) return;
+    const merged = new Uint8Array(pending.reduce((n, a) => n + a.length, 0));
+    let o = 0;
+    for (const a of pending){ merged.set(a, o); o += a.length; }
+    pending = [];
+    fetch(`/api/term/${entry.sid}/input`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({data: b64encode(merged)}),
+    }).catch(() => {});
+  };
+
+  const term = new Terminal({
+    fontFamily:'"JetBrains Mono","Cascadia Mono","SF Mono",Consolas,"DejaVu Sans Mono",monospace',
+    fontSize:12, lineHeight:1.28, cursorBlink:true, cursorStyle:'bar',
+    scrollback:3000, allowProposedApi:true, theme:TERM_THEME(),
+  });
+  entry.term = term;
+  const fit = new FitAddon.FitAddon();
+  entry.fit = fit;
+  term.loadAddon(fit);
+  term.open(p.body);
+  requestAnimationFrame(() => { try { fit.fit(); } catch (_){} });
+  p.badge.className = 'term-pane-badge sync';
+  p.badge.textContent = '同步';
+
+  term.onData(d => {
+    entry.sendRaw(d);
+    if (entry.group.active && entry === entry.group.master){
+      for (const peer of entry.group.entries){
+        if (peer !== entry && !peer.gone && peer.sendRaw) peer.sendRaw(d);
+      }
+    }
+  });
+  term.onResize(({cols, rows}) => {
+    fetch(`/api/term/${entry.sid}/resize`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({cols, rows}),
+    }).catch(() => {});
+  });
+
+  /* Clipboard: identical habits to a standalone window. Selection stays
+     per-pane, so copying from n0 never picks up n1's text. */
+  term.onSelectionChange(() => {
+    const sel = term.getSelection();
+    if (sel) clipWrite(sel);
+  });
+  p.body.addEventListener('mouseup', () => {
+    const sel = term.getSelection();
+    if (sel) clipWrite(sel);
+  });
+  p.body.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    termGroupPaste(group, entry);
+  });
+  term.attachCustomKeyEventHandler(ev => {
+    if (ev.type !== 'keydown') return true;
+    const k = ev.key.toLowerCase();
+    if (ev.ctrlKey && ev.shiftKey && k === 'c'){
+      const sel = term.getSelection();
+      if (sel) clipWrite(sel);
+      return false;
+    }
+    if (ev.ctrlKey && ev.shiftKey && k === 'v'){ termGroupPaste(group, entry); return false; }
+    if (ev.shiftKey && ev.key === 'Insert'){ termGroupPaste(group, entry); return false; }
+    if (ev.ctrlKey && ev.key === 'Insert'){
+      const sel = term.getSelection();
+      if (sel) clipWrite(sel);
+      return false;
+    }
+    return true;
+  });
+  p.body.addEventListener('paste', e => {
+    const text = e.clipboardData && e.clipboardData.getData('text');
+    if (text){ e.preventDefault(); e.stopPropagation(); termGroupPaste(group, entry); }
+  });
+
+  // Clicking anywhere in the pane makes it master.
+  p.pane.addEventListener('pointerdown', () => termGroupSetMaster(entry), true);
+  p.pane.querySelector('.term-pane-head').addEventListener('click',
+    () => termGroupSetMaster(entry));
+
+  termStream(entry);
+  return entry;
+}
+
+function termGroupPaste(group, entry){
+  // Route through the master conceptually: paste text is sent as keystrokes,
+  // and the master's fan-out mirrors it. If the clicked pane is not master,
+  // the group sends to it directly plus mirrors when sync is on.
+  clipRead().then(text => {
+    if (text == null || !text.length){
+      toast('info', '需要 https 才能直接讀剪貼簿',
+        '目前是 http，請用 Ctrl+Shift+V 或下方「貼上」按鈕');
+      return;
+    }
+    if (group.active && group.master){
+      group.master.sendRaw(text);
+      for (const peer of group.entries){
+        if (peer !== group.master && !peer.gone && peer.sendRaw) peer.sendRaw(text);
+      }
+    } else {
+      entry.sendRaw(text);
+    }
+    if (group.master && group.master.term) group.master.term.focus();
+  });
+}
+
+function termGroupSetMaster(entry, silent){
+  const group = entry.group;
+  if (!group || entry.dead) return;
+  group.master = entry;
+  for (const e of group.entries){
+    if (!e.paneEl) continue;
+    const isMaster = e === entry;
+    e.paneEl.classList.toggle('is-master', isMaster);
+    if (isMaster){
+      e.badgeEl.className = 'term-pane-badge';
+      e.badgeEl.textContent = 'MASTER';
+    } else {
+      e.badgeEl.className = 'term-pane-badge sync';
+      e.badgeEl.textContent = group.active ? '同步' : '待命';
+    }
+  }
+  group.masterEl.textContent = `Master：${entry.node}`;
+  if (!silent) entry.term.focus();
+}
+
+function termGroupSetSync(group, on){
+  group.active = on;
+  group.syncLbl.textContent = on ? '同步' : '只控 Master';
+  group.syncBox.parentElement.classList.toggle('off', !on);
+  for (const e of group.entries){
+    if (!e.paneEl || e === group.master) continue;
+    e.badgeEl.className = 'term-pane-badge sync';
+    e.badgeEl.textContent = on ? '同步' : '待命';
+  }
+  const tag = group.win.querySelector('.bc-tag');
+  if (tag) tag.textContent = on ? '廣播' : '單控';
+}
+
+function termSetStateGroup(group, text, dot){
+  if (group.stateEl) group.stateEl.textContent = text;
+  if (group.dot) group.dot.className = 'term-dot ' + (dot || '');
+}
+
+function termButtonStateForGroup(group, on){
+  // Reflect the group in the tray's broadcast button so it is obvious that
+  // a group is already running for that tray + kind.
+  document.querySelectorAll('.bc-menu').forEach(() => {});
+}
+
+function termGroupClose(group){
+  for (const e of group.entries){
+    if (e.sid) fetch(`/api/term/${e.sid}/close`, {method:'POST',
+      headers:{'Content-Type':'application/json'}, body:'{}'}).catch(() => {});
+    try { if (e.term) e.term.dispose(); } catch (_){}
+  }
+  TERM.groups.delete(group.key);
+  TERM.wins.delete(group.key);
+  group.win.remove();
+  termRenderDock();
+  document.dispatchEvent(new CustomEvent('term:changed'));
 }
 
 /* ---------- open / close ---------- */
@@ -3898,9 +4354,21 @@ function termRepaintTheme(){
   // to repaint anyway.
   if (!TERM || !TERM.wins) return;
   for (const entry of TERM.wins.values()){
-    try { entry.term.options.theme = TERM_THEME(); } catch (e){}
+    if (entry.group && entry.group.entries){
+      for (const e of entry.group.entries){
+        try { e.term && (e.term.options.theme = TERM_THEME()); } catch (_){}
+      }
+    } else {
+      try { entry.term.options.theme = TERM_THEME(); } catch (e){}
+    }
   }
 }
+
+// Any click outside an open broadcast menu dismisses it.
+document.addEventListener('click', e => {
+  if (e.target.closest('.bc-menu')) return;
+  document.querySelectorAll('.bc-panel.open').forEach(m => m.classList.remove('open'));
+});
 
 /* Delegated launcher: the address rows are re-rendered on every poll, so the
    handler lives on the document rather than on each button. */
@@ -3913,7 +4381,12 @@ document.addEventListener('click', e => {
 
 window.addEventListener('resize', () => {
   for (const entry of TERM.wins.values()){
-    if (!entry.win.classList.contains('is-min')){ try { entry.fit.fit(); } catch (e){} }
+    if (entry.win.classList.contains('is-min')) continue;
+    if (entry.group && entry.group.entries){
+      for (const e of entry.group.entries){ try { e.fit && e.fit.fit(); } catch (_){} }
+    } else {
+      try { entry.fit.fit(); } catch (e){}
+    }
   }
 });
 

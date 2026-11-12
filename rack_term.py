@@ -29,6 +29,8 @@ import inventory as inv
 IDLE_TIMEOUT = 60 * 60           # seconds without any traffic before reap
 MAX_SESSIONS = 12                # 2-3 operators x a handful of windows each
 CONNECT_TIMEOUT = 10
+CONNECT_ATTEMPTS = 4
+CONNECT_BACKOFF = 0.6
 KEEPALIVE = 30
 POLL_HOLD = 25.0                 # longest a /stream request may block
 BACKLOG = 2 * 1024 * 1024        # retained output per session
@@ -111,19 +113,33 @@ class TerminalSession:
 
     # -- connection -------------------------------------------------------
     def _connect(self, password):
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        try:
-            client.connect(
-                self.host, port=22, username=self.user, password=password,
-                timeout=CONNECT_TIMEOUT, banner_timeout=CONNECT_TIMEOUT,
-                auth_timeout=CONNECT_TIMEOUT, look_for_keys=False,
-                allow_agent=False,
-            )
-        except paramiko.AuthenticationException:
-            raise SessionError(f'{self.user}@{self.host} 認證失敗（帳密不符）')
-        except Exception as exc:                                 # noqa: BLE001
-            raise SessionError(f'連不上 {self.user}@{self.host}：{exc}')
+        # A broadcast group logs into four nodes at once, and sshd on these
+        # boxes throttles bursts ("No existing session"). Retrying briefly is
+        # cheaper than telling the operator to try again.
+        last = None
+        for attempt in range(CONNECT_ATTEMPTS):
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            try:
+                client.connect(
+                    self.host, port=22, username=self.user, password=password,
+                    timeout=CONNECT_TIMEOUT, banner_timeout=CONNECT_TIMEOUT,
+                    auth_timeout=CONNECT_TIMEOUT, look_for_keys=False,
+                    allow_agent=False,
+                )
+                break
+            except paramiko.AuthenticationException:
+                raise SessionError(f'{self.user}@{self.host} 認證失敗（帳密不符）')
+            except Exception as exc:                             # noqa: BLE001
+                last = exc
+                try:
+                    client.close()
+                except Exception:                                # noqa: BLE001
+                    pass
+                if attempt + 1 < CONNECT_ATTEMPTS:
+                    time.sleep(CONNECT_BACKOFF * (attempt + 1))
+        else:
+            raise SessionError(f'連不上 {self.user}@{self.host}：{last}')
 
         transport = client.get_transport()
         if transport:
