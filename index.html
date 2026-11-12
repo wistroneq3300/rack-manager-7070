@@ -1,0 +1,3210 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rack Manager · Neutrino</title>
+<style>
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#e9eef0; --bg-panel:#fbfcfc; --bg-panel-2:#f0f4f4; --bg-hover:#e6eeee;
+  --border:#798d94; --border-soft:#d2dde0; --line:#d2dde0;
+  --text:#17282e; --text-dim:#405860; --text-faint:#526970;
+  --sidebar-bg:#e3eaec; --sidebar-text:#203840; --sidebar-text-dim:#526a72;
+  --accent:#176f75; --accent-strong:#0f5c62; --accent-bg:rgba(23,111,117,.10);
+  --accent-ink:#f7ffff; --danger-ink:#fff7f7; --focus:#0f5c62;
+  --shadow-lg:0 16px 34px rgba(25,48,56,.16);
+  --green:#287249; --green-bg:rgba(40,114,73,.11);
+  --red:#a13e3e; --red-bg:rgba(161,62,62,.10);
+  --amber:#855d16; --amber-bg:rgba(133,93,22,.12);
+  /* Faint-but-legible: --text-faint washes out on the light panels. */
+  --text-xfaint:#6b8189;
+  --dot-off:#6d828a;
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0b1015; --bg-panel:#12191f; --bg-panel-2:#182129; --bg-hover:#1c272f;
+  --border:#5b6b73; --border-soft:#243139; --line:#33434d;
+  --text:#edf3f3; --text-dim:#b4c0c4; --text-faint:#8c9ca3;
+  --sidebar-bg:#0d151b; --sidebar-text:#dce6e7; --sidebar-text-dim:#8ea0a7;
+  --accent:#62b9b3; --accent-strong:#85cbc6; --accent-bg:rgba(98,185,179,.12);
+  --accent-ink:#071315; --danger-ink:#161010; --focus:#85cbc6;
+  --shadow-lg:0 18px 36px rgba(0,0,0,.46);
+  --green:#70c697; --green-bg:rgba(112,198,151,.12);
+  --red:#e18787; --red-bg:rgba(225,135,135,.12);
+  --amber:#d7b36d; --amber-bg:rgba(215,179,109,.13);
+  --text-xfaint:#728086;
+  --dot-off:#7d8d94;
+}
+:root{ --radius:12px; }
+*{box-sizing:border-box}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;
+  margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;
+  white-space:nowrap!important;border:0!important}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text); min-height:100vh;
+  font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+.main{background:var(--bg)}
+
+/* ---------- layout (mirrors the 6969 sidebar + topbar shell) ---------- */
+.layout{display:flex; min-height:100vh}
+.sidebar{
+  width:236px; flex:0 0 236px; color:var(--sidebar-text);
+  background:var(--sidebar-bg);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column; height:100vh; position:sticky; top:0;
+}
+.brand{padding:22px 18px 16px; border-bottom:1px solid var(--border-soft); position:relative}
+.logo-row{display:flex; align-items:center; gap:10px}
+.logo-img{width:auto; height:26px; display:block}
+.logo-txt .l1{font-weight:700; font-size:13px; color:var(--sidebar-text); letter-spacing:.3px}
+.manager-label{margin-top:2px; font-size:10px; color:var(--sidebar-text-dim);
+  letter-spacing:.6px; font-weight:600; text-transform:uppercase}
+.brand .sub{margin-top:8px; font-size:10px; color:var(--sidebar-text-dim); line-height:1.5}
+:root[data-theme="light"] .logo-img{filter:none}
+:root[data-theme="dark"] .logo-img{filter:brightness(1.15)}
+
+.nav{flex:1; overflow-y:auto; padding:12px 10px}
+.nav-group{font-size:10px; letter-spacing:1.4px; color:var(--sidebar-text-dim);
+  text-transform:uppercase; padding:6px 10px; font-weight:600}
+.nav-btn{
+  display:flex; align-items:center; gap:9px; width:100%; text-align:left; border:0;
+  background:transparent; color:var(--sidebar-text); font:inherit; font-size:12.5px;
+  padding:9px 10px; border-radius:8px; cursor:pointer; margin-bottom:2px;
+}
+.nav-btn:hover{background:var(--bg-hover)}
+.nav-btn.active{background:var(--accent-bg); color:var(--accent); font-weight:600}
+.nav-btn .ico{font-size:13px; width:16px; text-align:center; opacity:.9}
+
+.sidebar-foot{padding:14px 18px; border-top:1px solid var(--border-soft);
+  font-size:10px; color:var(--sidebar-text-dim); line-height:1.8}
+.sidebar-foot b{color:var(--sidebar-text); font-weight:600}
+
+.main{flex:1; min-width:0; display:flex; flex-direction:column}
+.topbar{
+  display:flex; align-items:center; gap:12px; padding:14px 24px; flex-wrap:wrap;
+  background:color-mix(in srgb, var(--bg-panel) 88%, transparent);
+  border-bottom:1px solid var(--border); position:sticky; top:0; z-index:20;
+  backdrop-filter:blur(8px);
+}
+.page-title{font-size:16px; font-weight:700; letter-spacing:.2px;
+  display:flex; align-items:center}
+.page-title::before{content:""; display:inline-block; width:4px; height:18px;
+  border-radius:2px; background:var(--accent); margin-right:10px; flex:0 0 auto}
+.spacer{flex:1}
+.content{padding:20px 24px 40px}
+
+/* ---------- controls ---------- */
+button{font:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--border);
+  background:var(--bg-panel-2); color:var(--text); padding:7px 13px; transition:.12s}
+button:hover:not(:disabled){background:var(--bg-hover); border-color:var(--accent)}
+button:disabled{opacity:.45; cursor:not-allowed}
+button.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+button.primary:hover:not(:disabled){filter:brightness(1.1)}
+button.danger{background:var(--red-bg); border-color:var(--red); color:var(--red)}
+button.danger:hover:not(:disabled){background:var(--red); color:var(--danger-ink)}
+button.mini{padding:3px 9px; font-size:12px; border-radius:6px}
+
+/* Theme toggle mirrors 6969: ◐ Dark / ☀ Light in a single pill. */
+#theme-toggle{width:auto; min-width:77px; padding:6px 11px; gap:7px; display:flex;
+  align-items:center; justify-content:center; font-size:11px; white-space:nowrap}
+#theme-toggle span:first-child{font-size:15px; line-height:1}
+#btn-refresh{display:flex; align-items:center; gap:6px; font-size:11.5px}
+.chip{
+  display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px;
+  background:var(--bg-panel-2); border:1px solid var(--border); font-size:12px;
+  color:var(--text-dim); font-variant-numeric:tabular-nums;
+  transition:border-color .13s, background .13s;
+}
+.chip:hover{border-color:var(--border-soft)}
+.chip b{color:var(--text); font-weight:700; font-variant-numeric:tabular-nums}
+
+/* ---------- status dots ---------- */
+.dot{width:8px; height:8px; border-radius:50%; display:inline-block; flex:0 0 8px}
+.dot.on{background:var(--green)}
+.dot.off{background:var(--text-faint); opacity:.5}
+.dot.warn{background:var(--amber)}
+.dot.unknown{background:var(--text-faint); opacity:.35}
+
+/* ---------- tray grid ---------- */
+.rack{display:flex; flex-direction:column; gap:12px}
+.tray{
+  background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius);
+  overflow:hidden; position:relative;
+}
+.tray-head{
+  display:flex; align-items:center; gap:12px; padding:11px 14px;
+  background:var(--bg-panel-2); border-bottom:1px solid var(--border-soft); flex-wrap:wrap;
+}
+.tray-name{font-weight:700; font-size:14px; letter-spacing:.2px; min-width:104px;
+  font-variant-numeric:tabular-nums}
+.tray-meta{font-size:12px; color:var(--text-dim); display:flex; gap:14px; flex-wrap:wrap}
+.tray-actions{display:flex; gap:6px; margin-left:auto; flex-wrap:wrap}
+
+.nodes{display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--border-soft)}
+@media (max-width:1180px){ .nodes{grid-template-columns:repeat(2,1fr)} }
+@media (max-width:680px){ .nodes{grid-template-columns:1fr} }
+
+.node{background:var(--bg-panel); padding:12px 14px; display:flex; flex-direction:column; gap:9px;
+  transition:background .13s}
+.node-id{display:flex; align-items:center; gap:7px; font-weight:600; font-size:13px;
+  letter-spacing:.15px}
+/* Sits next to the node name; opens the HW/FW inventory popup. */
+.hw-btn{margin-left:auto; font-size:9.5px; font-weight:700; letter-spacing:.4px;
+  padding:1px 6px; border-radius:4px; line-height:1.5; cursor:pointer;
+  background:var(--bg-panel-2); border:1px solid var(--line);
+  color:var(--text-dim); font-family:inherit}
+.hw-btn:hover{background:var(--accent-bg); border-color:var(--accent);
+  color:var(--accent)}
+.hw-btn.busy{opacity:.55; cursor:progress}
+.node-ips{font-size:11.5px; color:var(--text-faint); font-variant-numeric:tabular-nums;
+  line-height:1.6; display:grid; grid-template-columns:auto 1fr; gap:0 8px; align-items:baseline}
+.node-ips .k{color:var(--text-faint); font-size:10px; letter-spacing:.5px;
+  text-transform:uppercase; font-weight:600}
+.node-ips .v{color:var(--text-dim); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11px}
+.node-host{font-size:11.5px; line-height:1.6; display:grid;
+  grid-template-columns:auto 1fr; gap:0 8px; align-items:baseline}
+.node-host .k{color:var(--text-faint); font-size:10px; letter-spacing:.5px;
+  text-transform:uppercase; font-weight:600}
+.node-host .v{color:var(--text); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11px; overflow-wrap:anywhere}
+.node-host .host-unknown{color:var(--text-faint); font-size:11px}
+.node-state{display:flex; gap:8px; font-size:11.5px; color:var(--text-dim);
+  flex-wrap:wrap; align-items:center}
+.node-actions{display:flex; gap:5px; flex-wrap:wrap; margin-top:auto; padding-top:2px}
+
+.badge{font-size:11px; padding:2px 7px; border-radius:5px; border:1px solid transparent}
+.badge.on{background:var(--green-bg); color:var(--green); border-color:var(--green)}
+.badge.off{background:var(--bg-panel-2); color:var(--text-faint); border-color:var(--border)}
+.badge.unknown{background:var(--amber-bg); color:var(--amber); border-color:var(--amber)}
+
+/* ---------- power shelf ---------- */
+.shelf-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; margin-top:12px}
+.shelf{
+  background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius);
+  padding:13px 15px;
+}
+.shelf.dead{opacity:.55; border-style:dashed}
+.shelf-head{display:flex; align-items:center; gap:9px; margin-bottom:9px}
+.shelf-head .name{font-weight:700}
+.shelf-units{display:flex; gap:5px; flex-wrap:wrap; margin:9px 0}
+.unit{
+  font-size:10.5px; padding:3px 7px; border-radius:5px; border:1px solid var(--border);
+  background:var(--bg-panel-2); color:var(--text-dim); font-variant-numeric:tabular-nums;
+}
+.unit.ok{background:var(--green-bg); color:var(--green); border-color:var(--green)}
+.unit.idle{background:var(--bg-panel-2); color:var(--text-dim); border-color:var(--border)}
+.unit.bad{background:var(--red-bg); color:var(--red); border-color:var(--red)}
+.shelf-note{font-size:10.5px; color:var(--text-faint); margin-top:6px; line-height:1.5}
+
+/* ---------- add tray ---------- */
+.add-card{background:var(--bg-panel); border:1px solid var(--border); border-radius:var(--radius);
+  padding:18px 20px; margin-bottom:16px}
+.add-head h2{font-size:15px; margin:0 0 6px; letter-spacing:.2px}
+.add-head p{margin:0 0 16px; font-size:12px; color:var(--text-dim); line-height:1.6}
+.add-head code{background:var(--bg-panel-2); padding:1px 5px; border-radius:4px; font-size:11px}
+.add-row{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px}
+.add-row label{display:flex; flex-direction:column; gap:5px; font-size:11px;
+  color:var(--text-faint); letter-spacing:.4px; text-transform:uppercase; font-weight:600}
+.add-row input{width:200px; padding:8px 11px; border-radius:8px; border:1px solid var(--border);
+  background:var(--bg-panel-2); color:var(--text); font:inherit; font-size:13px;
+  text-transform:none; letter-spacing:0}
+.add-row input:focus{outline:none; border-color:var(--accent)}
+.add-defaults{display:flex; gap:12px; flex-wrap:wrap; align-items:center; background:var(--bg-panel-2);
+  border:1px solid var(--border); border-radius:9px; padding:11px 14px; margin-bottom:16px}
+.add-defaults label{display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-dim)}
+.add-defaults input{width:110px; padding:5px 8px; border-radius:6px; border:1px solid var(--border);
+  background:var(--bg-panel); color:var(--text); font:inherit; font-size:12px}
+.add-defaults input:focus{outline:none; border-color:var(--accent)}
+.add-table{width:100%; border-collapse:collapse; font-size:12px; margin-bottom:14px}
+.add-table th{text-align:left; font-size:10px; letter-spacing:.6px; text-transform:uppercase;
+  color:var(--text-faint); font-weight:600; padding:7px 8px; border-bottom:1px solid var(--border)}
+.add-table td{padding:6px 8px; border-bottom:1px solid var(--border-soft); vertical-align:middle}
+.add-table td input{width:100%; min-width:64px; padding:6px 8px; border-radius:6px;
+  border:1px solid var(--border); background:var(--bg-panel-2); color:var(--text);
+  font:inherit; font-size:12px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.add-table td input:focus{outline:none; border-color:var(--accent)}
+.add-table td input:disabled{opacity:.5}
+.add-table .node-tag{font-weight:700; font-size:11.5px; color:var(--text-dim); white-space:nowrap}
+.add-table .probe-ok{color:var(--green); font-family:ui-monospace,Menlo,monospace; font-size:11px}
+.add-table .probe-bad{color:var(--red); font-size:11px}
+.add-table .probe-wait{color:var(--text-faint); font-size:11px}
+.add-foot{display:flex; gap:9px; align-items:center; flex-wrap:wrap}
+.fw-job-actions{display:flex; gap:9px; align-items:center; flex-wrap:wrap;
+  padding-top:12px; border-top:1px solid var(--border-soft)}
+.fw-job-card{margin-bottom:16px}
+.fw-job-head{display:flex; justify-content:space-between; align-items:flex-start; gap:14px}
+.fw-job-sub{font-size:11.5px; color:var(--text-dim); margin-top:2px}
+.fw-job-close{flex:none; width:28px; height:28px; padding:0; border-radius:7px;
+  border:1px solid var(--border); background:transparent; color:var(--text-faint);
+  font-size:12px; line-height:1; cursor:pointer}
+.fw-job-close:hover{color:var(--text); border-color:var(--text-faint)}
+.fw-ver .pending{color:var(--amber); font-weight:600}
+.fw-ok-tag{display:inline-block; margin-left:6px; padding:1px 6px; border-radius:4px;
+  background:var(--green-bg); color:var(--green); font-size:10px; font-weight:600;
+  letter-spacing:.3px}
+.add-status{font-size:11.5px; color:var(--text-dim)}
+.add-status.ok{color:var(--green)}
+.add-status.bad{color:var(--red)}
+.icon-del{position:relative;width:30px;height:30px;padding:0;background:none;border:0;
+  color:var(--text-faint);cursor:pointer}
+.icon-del:hover{color:var(--red)}
+
+/* Password field with a reveal toggle. The button is positioned by .pw-wrap
+   so it sits inside the input without affecting the table layout. */
+.pw-wrap{position:relative; display:flex; align-items:center; flex:1; min-width:0}
+.pw-wrap input{padding-right:30px !important}
+.pw-eye{
+  position:absolute; right:3px; top:50%; transform:translateY(-50%);
+  background:none; border:0; cursor:pointer; padding:2px 5px;
+  line-height:1; color:var(--text-faint); opacity:.72;
+  border-radius:4px;
+}
+.pw-eye::before{content:"";display:block;width:14px;height:9px;border:1.5px solid currentColor;
+  border-radius:50% / 62%}
+.pw-eye::after{content:"";position:absolute;left:50%;top:50%;width:3px;height:3px;
+  border-radius:50%;background:currentColor;transform:translate(-50%,-50%)}
+.pw-eye.on::after{width:17px;height:1.5px;border-radius:2px;transform:translate(-50%,-50%) rotate(-42deg)}
+.pw-eye:hover{opacity:1; background:var(--bg-hover); color:var(--text)}
+.pw-eye.on{opacity:1; color:var(--accent)}
+.add-defaults .pw-wrap input{width:110px}
+
+/* ---------- fw flash ---------- */
+.fw-kind{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:10px; margin-bottom:16px}
+.fw-kind-btn{
+  text-align:left; padding:12px 14px; border-radius:10px; cursor:pointer;
+  background:var(--bg-panel-2); border:1px solid var(--border); color:var(--text);
+  display:flex; flex-direction:column; gap:3px; transition:.13s;
+}
+.fw-kind-btn b{font-size:13px; letter-spacing:.2px}
+.fw-kind-btn small{font-size:10.5px; color:var(--text-faint); line-height:1.4}
+.fw-kind-btn:hover:not(:disabled){border-color:var(--accent)}
+.fw-kind-btn.active{border-color:var(--accent); background:var(--accent-bg)}
+.fw-kind-btn.active b{color:var(--accent)}
+.fw-kind-btn:disabled{opacity:.45; cursor:not-allowed}
+
+.fw-plan{background:var(--bg-panel-2); border:1px solid var(--border);
+  border-radius:9px; padding:11px 14px; margin-bottom:16px; display:flex;
+  flex-direction:column; gap:7px}
+.fw-plan-row{display:flex; align-items:baseline; gap:10px; font-size:11.5px}
+.fw-plan-row code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px;
+  color:var(--text-dim); word-break:break-all; flex:1; white-space:pre-wrap}
+.fw-plan-row span:last-child{color:var(--text-dim); flex:1}
+
+.fw-pkg{background:var(--bg-panel-2); border:1px solid var(--border); border-radius:9px;
+  padding:12px 14px; margin-bottom:16px}
+.fw-pkg-head{display:flex; align-items:center; gap:11px; flex-wrap:wrap; margin-bottom:9px}
+.btn-upload{
+  display:inline-flex; align-items:center; padding:6px 13px; border-radius:7px;
+  background:var(--accent-bg); border:1px solid var(--accent); color:var(--accent);
+  font-size:12px; font-weight:600; cursor:pointer;
+}
+.btn-upload:hover{background:var(--accent); color:var(--bg)}
+#fw-package{width:100%; padding:8px 11px; border-radius:7px; border:1px solid var(--border);
+  background:var(--bg-panel); color:var(--text); font:inherit; font-size:12px;
+  font-family:ui-monospace,Menlo,monospace; margin-bottom:9px}
+#fw-package:focus{outline:none; border-color:var(--accent)}
+.fw-pkg-actions{display:flex; align-items:center; gap:12px; flex-wrap:wrap}
+.fw-hint{font-size:10.5px; color:var(--text-faint)}
+.fw-hint code{background:var(--bg-panel); padding:1px 5px; border-radius:4px}
+
+.fw-targets{margin-bottom:16px}
+.fw-targets-head{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:10px}
+.fw-check{display:inline-flex; align-items:center; gap:6px; font-size:12px;
+  cursor:pointer; color:var(--text-dim)}
+.fw-check input{accent-color:var(--accent); cursor:pointer}
+.fw-tray-list{display:flex; flex-direction:column; gap:7px; max-height:420px;
+  overflow-y:auto; padding-right:4px}
+.fw-tray{background:var(--bg-panel-2); border:1px solid var(--border); border-radius:8px;
+  padding:8px 11px}
+.fw-tray.on{border-color:var(--accent); background:var(--accent-bg)}
+.fw-tray-row{display:flex; align-items:center; gap:9px; flex-wrap:wrap}
+.fw-tray-name{font-weight:600; font-size:12.5px; min-width:88px}
+.fw-nodes{display:flex; gap:11px; flex-wrap:wrap; margin-left:auto}
+.fw-node{display:inline-flex; align-items:center; gap:4px; font-size:11.5px;
+  color:var(--text-dim); cursor:pointer}
+.fw-node input{accent-color:var(--accent); cursor:pointer}
+.fw-node.partial{color:var(--amber)}
+
+#fw-job-rows td{font-size:11.5px}
+.fw-st{display:inline-block; padding:2px 8px; border-radius:5px; font-size:10.5px;
+  font-weight:600; letter-spacing:.3px}
+.fw-st.queued{background:var(--bg-panel-2); color:var(--text-faint)}
+.fw-st.reading,.fw-st.uploading,.fw-st.flashing{
+  background:var(--accent-bg); color:var(--accent)}
+.fw-st.ok{background:var(--green-bg); color:var(--green)}
+.fw-st.failed{background:var(--red-bg); color:var(--red)}
+.fw-ver{font-family:ui-monospace,Menlo,monospace; font-size:11px; color:var(--text-dim)}
+.fw-bmc{font-family:ui-monospace,Menlo,monospace; font-size:11px;
+  color:var(--text-faint); font-variant-numeric:tabular-nums}
+/* 前 → 後: the arrow separates what was there from what the flash produced,
+   so a no-op flash (0.41 → 0.41) is obvious at a glance. */
+.fw-ver .sep{margin:0 6px; color:var(--text-faint)}
+.fw-ver .was{color:var(--text-faint)}
+.fw-ver .now{color:var(--accent); font-weight:700}
+.fw-ver .now.same{color:var(--text-dim); font-weight:400}
+.fw-ver .none{color:var(--text-faint)}
+.fw-msg{font-size:10.5px; color:var(--text-faint)}
+
+/* ---------- modal ---------- */
+.overlay{
+  position:fixed; inset:0; background:rgba(0,0,0,.62); display:none;
+  align-items:center; justify-content:center; padding:20px; z-index:50;
+}
+.overlay.show{display:flex}
+.modal{
+  background:var(--bg-panel); border:1px solid var(--border); border-radius:14px;
+  box-shadow:var(--shadow-lg); width:min(520px,100%); padding:22px 24px;
+}
+.modal h3{margin:0 0 6px; font-size:17px}
+.modal p{margin:0 0 14px; color:var(--text-dim); font-size:13px; line-height:1.65}
+.modal .warn{
+  background:var(--red-bg); border:1px solid var(--red); color:var(--red);
+  border-radius:9px; padding:10px 13px; font-size:12.5px; margin-bottom:14px; line-height:1.6;
+}
+.modal code{
+  background:var(--bg-panel-2); padding:1px 6px; border-radius:4px;
+  font-size:12.5px; border:1px solid var(--border-soft);
+}
+.modal input{
+  width:100%; padding:9px 12px; border-radius:8px; border:1px solid var(--border);
+  background:var(--bg-panel-2); color:var(--text); font:inherit; margin-bottom:14px;
+}
+.modal input:focus{outline:none; border-color:var(--accent)}
+/* Confirm dialog: show target + action + exact command so the operator sees
+   what will run, not just a vague "are you sure". */
+#m-scope{display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  background:var(--bg-panel-2); border:1px solid var(--border);
+  border-radius:9px; padding:10px 13px; font-size:12.5px; margin-bottom:8px}
+.scope-k{font-size:10px; letter-spacing:.8px; text-transform:uppercase;
+  color:var(--text-faint); font-weight:600}
+.scope-act{color:var(--red)}
+#m-cmd{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px;
+  color:var(--text-dim); background:var(--bg-panel-2); border:1px dashed var(--border);
+  border-radius:7px; padding:7px 11px; margin-bottom:12px; word-break:break-all}
+#m-ok:disabled{opacity:.6; cursor:wait}
+/* ---------- HW/FW inventory modal ---------- */
+.hw-modal{width:min(940px,100%); display:flex; flex-direction:column;
+  padding:22px 24px 18px}
+.hw-head{display:flex; align-items:flex-start; gap:12px; margin-bottom:14px;
+  padding-bottom:13px; border-bottom:1px solid var(--line); flex:none}
+.hw-head h3{margin:0; font-size:17px; letter-spacing:.2px}
+.hw-sub{margin-top:4px; font-size:11.5px; color:var(--text-faint);
+  font-variant-numeric:tabular-nums}
+.hw-close{margin-left:auto; background:transparent; border:1px solid var(--line);
+  color:var(--text-dim); width:26px; height:26px; border-radius:7px; cursor:pointer;
+  line-height:1; padding:0; font-family:inherit; flex:none;position:relative}
+.hw-close::before,.hw-close::after,.toast .tx::before,.toast .tx::after,
+.icon-del::before,.icon-del::after{content:"";position:absolute;left:50%;top:50%;
+  width:13px;height:1.5px;border-radius:2px;background:currentColor}
+.hw-close::before,.toast .tx::before,.icon-del::before{transform:translate(-50%,-50%) rotate(45deg)}
+.hw-close::after,.toast .tx::after,.icon-del::after{transform:translate(-50%,-50%) rotate(-45deg)}
+.hw-close:hover{background:var(--red-bg); border-color:var(--red); color:var(--red)}
+
+/* The scrollbar must never sit on top of a value. scrollbar-gutter reserves
+   the track, and padding-right keeps content clear of it even in browsers
+   that ignore the gutter property. */
+.hw-body{
+  flex:1 1 auto; min-height:0; max-height:min(58vh,540px);
+  overflow-y:auto; overflow-x:hidden;
+  scrollbar-gutter:stable;
+  padding-right:14px;
+}
+.hw-body::-webkit-scrollbar{width:9px}
+.hw-body::-webkit-scrollbar-track{background:transparent; margin:2px 0}
+.hw-body::-webkit-scrollbar-thumb{
+  background:var(--border); border-radius:5px; border:2px solid transparent;
+  background-clip:content-box}
+.hw-body::-webkit-scrollbar-thumb:hover{background:var(--text-faint);
+  background-clip:content-box}
+.hw-body{scrollbar-width:thin; scrollbar-color:var(--border) transparent}
+
+.hw-sec{margin-bottom:20px}
+.hw-sec:last-child{margin-bottom:0}
+.hw-sec-t{font-size:10.5px; font-weight:700; letter-spacing:1.1px;
+  text-transform:uppercase; color:var(--text-faint); margin-bottom:9px;
+  display:flex; align-items:center; gap:8px}
+.hw-sec-t::after{content:''; flex:1; height:1px; background:var(--line)}
+
+/* Hardware: tag | description | count, count pinned to a fixed right edge so
+   rows line up regardless of description length. */
+.hw-grid{display:grid;
+  grid-template-columns:76px minmax(0,1fr) 52px; align-items:baseline}
+.hw-grid>span{padding:5px 0; border-bottom:1px solid var(--bg-panel-2);
+  font-size:12.5px; line-height:1.45}
+.hw-grid>span:nth-child(3n+1){color:var(--text-faint); font-size:10.5px;
+  font-weight:700; letter-spacing:.6px; text-transform:uppercase;
+  white-space:nowrap; padding-right:10px}
+.hw-grid>span:nth-child(3n+2){color:var(--text); padding-right:12px;
+  word-break:break-word; font-family:inherit}
+.hw-grid>span:nth-child(3n){text-align:right; color:var(--accent);
+  font-weight:700; white-space:nowrap; font-variant-numeric:tabular-nums}
+
+/* Firmware: this is a lot of machine identifiers, but monospace at 11px with
+   loose tracking reads badly. Use the UI font, tabular numerals, and let the
+   component name carry the weight instead. */
+.hw-fw{width:100%; border-collapse:collapse; font-size:12.5px}
+.hw-fw th{text-align:left; font-size:10px; letter-spacing:.8px;
+  color:var(--text-faint); font-weight:700; padding:0 0 7px;
+  border-bottom:1px solid var(--line); text-transform:uppercase}
+.hw-fw th:last-child{text-align:right; padding-left:16px}
+.hw-fw td{padding:6px 0; border-bottom:1px solid var(--bg-panel-2);
+  vertical-align:baseline; line-height:1.4}
+.hw-fw td:first-child{color:var(--text-dim); font-weight:600;
+  letter-spacing:.1px; padding-right:16px; white-space:nowrap}
+.hw-fw td:last-child{color:var(--text); text-align:right;
+  font-variant-numeric:tabular-nums; letter-spacing:.2px;
+  font-feature-settings:'tnum' 1}
+.hw-fw tr:last-child td{border-bottom:none}
+.hw-fw tr:hover td{background:var(--bg-panel-2)}
+
+.hw-empty{padding:26px 4px; text-align:center; color:var(--text-faint);
+  font-size:12.5px}
+.hw-err{padding:14px 16px; border-radius:9px; background:var(--red-bg);
+  border:1px solid var(--red); color:var(--red); font-size:12.5px; line-height:1.6}
+.hw-note{padding:10px 12px; border-radius:8px; background:var(--amber-bg);
+  border:1px solid var(--amber); color:var(--amber); font-size:12px; line-height:1.55;
+  margin-bottom:11px}
+.hw-live{display:inline-flex; align-items:center; gap:6px; font-size:10.5px;
+  font-weight:700; letter-spacing:.5px; color:var(--accent)}
+.hw-live .sp{width:9px; height:9px; border:2px solid var(--accent);
+  border-right-color:transparent; border-radius:50%;
+  animation:hwspin .7s linear infinite}
+@keyframes hwspin{to{transform:rotate(360deg)}}
+
+.modal-foot{display:flex; gap:9px; justify-content:flex-end}
+.result{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11.5px;
+  background:var(--bg-panel-2); border:1px solid var(--border-soft); border-radius:8px;
+  padding:10px; max-height:190px; overflow:auto; white-space:pre-wrap;
+  color:var(--text-dim); margin-bottom:14px;
+}
+.foot-note{margin-top:22px; font-size:11.5px; color:var(--text-faint); line-height:1.8}
+.spin{display:inline-block; width:12px; height:12px; border:2px solid var(--text-faint);
+  border-top-color:transparent; border-radius:50%; animation:sp .7s linear infinite; vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ---------- toast notifications ---------- */
+#toasts{position:fixed; right:20px; bottom:20px; z-index:90; display:flex;
+  flex-direction:column; gap:9px; max-width:400px}
+.toast{
+  display:flex; align-items:flex-start; gap:10px; padding:12px 15px;
+  border-radius:10px; border:1px solid var(--border); background:var(--bg-panel);
+  box-shadow:var(--shadow-lg); font-size:12.5px; line-height:1.5; color:var(--text);
+  border-left-width:4px;
+}
+.toast.out{animation:tout .2s ease-in forwards}
+.toast .ti{min-width:32px;font-size:11px;font-weight:750;letter-spacing:.35px;
+  line-height:1.6;flex:0 0 auto}
+.toast .tb{flex:1; min-width:0}
+.toast .tt{font-weight:700; margin-bottom:2px}
+.toast .td{color:var(--text-dim); font-size:11.5px; word-break:break-word}
+.toast .tx{background:none; border:0; color:var(--text-faint); cursor:pointer;
+  width:28px;height:28px;padding:0;line-height:1;position:relative}
+.toast .tx:hover{color:var(--text)}
+.toast.ok{border-left-color:var(--green)}
+.toast.ok .ti{color:var(--green)}
+.toast.err{border-left-color:var(--red)}
+.toast.err .ti{color:var(--red)}
+.toast.warn{border-left-color:var(--amber)}
+.toast.warn .ti{color:var(--amber)}
+.toast.info{border-left-color:var(--accent)}
+.toast.info .ti{color:var(--accent)}
+@keyframes tout{to{opacity:0; transform:translateX(16px)}}
+
+/* ---------- premium enterprise foundation ---------- */
+::selection{background:var(--accent);color:var(--bg-panel)}
+*{scrollbar-color:var(--border) transparent;scrollbar-width:thin}
+*:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+::placeholder{color:var(--text-faint);opacity:1}
+a{text-underline-offset:.2em}
+
+.sidebar{
+  width:232px;flex-basis:232px;background:var(--sidebar-bg);
+  border-right:1px solid var(--border-soft)
+}
+.brand{padding:24px 20px 20px;border-color:var(--border-soft)}
+.logo-row{min-height:30px}
+.logo-img{height:28px}
+.manager-label{margin-top:7px;font-size:11px;letter-spacing:1.35px;color:var(--sidebar-text)}
+.brand .sub{margin-top:10px;font-size:11px;color:var(--sidebar-text-dim)}
+.nav{padding:18px 12px}
+.nav-group{padding:7px 10px 8px;font-size:10px;letter-spacing:1.45px}
+.nav-group:not(:first-child){margin-top:14px}
+.nav-btn{
+  gap:10px;min-height:42px;margin-bottom:4px;padding:10px 11px;border:1px solid transparent;
+  border-radius:9px;font-size:13px;color:var(--sidebar-text-dim)
+}
+.nav-btn:hover{background:var(--bg-hover);color:var(--sidebar-text);border-color:var(--border-soft)}
+.nav-btn.active{background:var(--accent-bg);color:var(--accent-strong);border-color:transparent}
+.nav-btn .ico{display:grid;place-items:center;width:19px;height:19px;font-size:10px;
+  border:1px solid currentColor;border-radius:5px;opacity:.8}
+.sidebar-foot{padding:17px 20px;border-color:var(--border-soft);font-size:11px;line-height:1.85}
+
+.topbar{
+  min-height:66px;padding:12px 28px;gap:10px;background:var(--bg-panel);
+  border-color:var(--border-soft);backdrop-filter:none
+}
+.page-title{font-size:17px;font-weight:680;letter-spacing:0}
+.page-title::before{width:3px;height:20px;margin-right:11px;border-radius:3px}
+.content{width:100%;max-width:2000px;margin:0 auto;padding:26px 28px 56px}
+
+button{
+  min-height:34px;padding:7px 13px;border-color:var(--border);border-radius:8px;
+  background:var(--bg-panel-2);color:var(--text-dim);font-size:13px;font-weight:560;
+  transition:background-color .14s,border-color .14s,color .14s
+}
+button:hover:not(:disabled){background:var(--bg-hover);border-color:var(--accent);color:var(--text)}
+button:active:not(:disabled){background:var(--accent-bg)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button.primary:hover:not(:disabled){background:var(--accent-strong);border-color:var(--accent-strong);color:var(--accent-ink);filter:none}
+button.danger{background:var(--red-bg);border-color:color-mix(in srgb,var(--red) 58%,var(--border));color:var(--red)}
+button.danger:hover:not(:disabled){background:var(--red);border-color:var(--red);color:var(--danger-ink)}
+button.mini{min-height:30px;padding:5px 10px;font-size:11.5px;border-radius:7px}
+.btn-reboot,.btn-pcycle,.btn-aux,.btn-bmcreset,.btn-poweron,.btn-poweroff,.btn-graceoff{
+  background:var(--bg-panel-2);border-color:var(--border);color:var(--text-dim);
+  border-style:solid;box-shadow:none;font-weight:560
+}
+.btn-reboot:hover:not(:disabled),.btn-bmcreset:hover:not(:disabled),
+.btn-poweron:hover:not(:disabled),.btn-graceoff:hover:not(:disabled){
+  background:var(--accent-bg);border-color:var(--accent);color:var(--accent-strong)
+}
+.btn-poweroff,.btn-pcycle,.btn-aux{color:var(--red)}
+.btn-poweroff:hover:not(:disabled),.btn-pcycle:hover:not(:disabled),.btn-aux:hover:not(:disabled){
+  background:var(--red-bg);border-color:var(--red);color:var(--red)
+}
+button:disabled,button.primary:disabled,button.danger:disabled{
+  opacity:1;background:var(--bg-panel-2);border-color:var(--border-soft);
+  color:var(--text-faint);cursor:not-allowed;filter:none
+}
+input:disabled,select:disabled{
+  opacity:1;background:var(--bg-panel-2);border-color:var(--border-soft);
+  color:var(--text-faint);cursor:not-allowed
+}
+#theme-toggle{min-width:94px;min-height:36px;padding:7px 12px;font-size:12px}
+.theme-mark{width:13px;height:13px;border:1px solid var(--text-faint);border-radius:50%;
+  background:linear-gradient(90deg,var(--text) 50%,var(--bg-panel) 50%)}
+#btn-refresh{min-height:36px;font-size:12px}
+.chip{min-height:32px;padding:5px 11px;border-radius:7px;background:var(--bg-panel-2);
+  border-color:var(--border-soft);font-size:12px}
+.chip:hover{border-color:var(--border)}
+
+/* 7px at --text-faint disappeared on the light panels, which is where the
+   BF4 rows are read from. The dot is the whole signal, so it gets its own
+   colour per theme and a hairline ring to hold its edge on either background. */
+.dot{width:8px;height:8px;flex-basis:8px;box-shadow:0 0 0 1px var(--bg-panel)}
+.dot.off,.dot.unknown{opacity:1;background:var(--dot-off)}
+.status-line{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.status-line strong{color:var(--text);font-weight:650}
+.status-line em{font-style:normal;color:var(--text-faint)}
+.status-line.is-partial em{color:var(--amber)}
+.status-line.is-offline em{color:var(--text-faint)}
+
+.rack{gap:16px}
+.tray{
+  overflow:visible;border-color:var(--border-soft);border-radius:var(--radius);
+  background:var(--bg-panel)
+}
+.tray-head{
+  min-height:62px;padding:13px 16px;gap:16px;background:var(--bg-panel-2);
+  border-bottom-color:var(--border-soft);border-radius:var(--radius) var(--radius) 0 0
+}
+.tray-name{min-width:118px;font-size:15px;font-weight:720;letter-spacing:.05px}
+.tray-meta{align-items:center;gap:14px;font-size:12px;color:var(--text-dim)}
+.tray-actions{position:relative;gap:8px}
+
+.nodes{grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--border-soft);
+  border-radius:0 0 var(--radius) var(--radius);overflow:hidden}
+.node{min-width:0;min-height:220px;padding:16px;gap:13px;background:var(--bg-panel);transition:none}
+.node-id{gap:8px;font-size:15px;font-weight:700;letter-spacing:0;min-width:0}
+.node-id>span:nth-child(2){overflow-wrap:anywhere}
+.hw-btn{min-height:28px;margin-left:auto;padding:3px 8px;border-color:var(--border);
+  border-radius:6px;font-size:11px;letter-spacing:.35px;background:var(--bg-panel-2);color:var(--text-dim)}
+.hw-btn:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent-strong)}
+/* BF4 management addresses sit below the host pair, set off by a hairline
+   so the two pairs are not read as one four-address list. The key column is
+   widened because "BF4 OS" / "BF4 BMC" are the only two-word labels there. */
+.node-ips{grid-template-columns:max-content minmax(0,1fr);gap:5px 10px;line-height:1.45}
+.node-ips .k{font-size:11px;letter-spacing:.65px;color:var(--text-faint);white-space:nowrap}
+.node-ips .v{font-size:13px;color:var(--text);line-height:1.45;white-space:normal;overflow-wrap:anywhere;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.node-ips .bf4-k,.node-ips .bf4-v{padding-top:5px}
+.node-ips .bf4-k:first-of-type,.node-ips .bf4-k:first-of-type + .bf4-v{
+  margin-top:4px;padding-top:8px;border-top:1px dashed var(--border-soft)}
+.node-ips .bf4-v{color:var(--text-dim)}
+/* The MAC sits behind its IP on the same line: small, faint and monospace so
+   it reads as an attribute of the address rather than a second address. */
+.node-ips .mac{font-size:10.5px;letter-spacing:.2px;color:var(--text-xfaint);
+  white-space:nowrap;font-weight:400}
+.bf4-addr{display:inline-flex;align-items:center;gap:6px;min-width:0;white-space:nowrap}
+.bf4-pending{color:var(--text-faint)}
+.bf4-pending .dot{opacity:.5}
+.node-host .host-mismatch{color:var(--amber);font-weight:650}
+.bf4-none{color:var(--text-faint);font-size:11px;font-style:italic}
+.node-state{gap:7px 8px;font-size:12px;line-height:1.35;color:var(--text-dim)}
+.state-chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:4px 8px;
+  border:1px solid var(--border-soft);border-radius:6px;background:var(--bg-panel-2);white-space:nowrap}
+.state-chip .state-label{font-size:11px;text-transform:uppercase;letter-spacing:.45px;color:var(--text-faint)}
+.state-chip .dot{margin-right:-1px}
+.state-chip .state-value{font-weight:650;color:var(--text)}
+.state-chip.is-up .state-value,.state-chip.power-on .state-value{color:var(--green)}
+.state-chip.is-down .state-value,.state-chip.is-unknown .state-value{color:var(--amber)}
+.state-chip.power-off .state-value{color:var(--text-dim)}
+.node-actions{display:block;margin-top:auto;padding-top:1px}
+
+.actions-menu{position:relative;min-width:0}
+.actions-menu>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  min-height:32px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;
+  background:var(--bg-panel-2);color:var(--text-dim);font-size:11.5px;font-weight:650;
+  cursor:pointer;list-style:none;user-select:none}
+.actions-menu>summary::-webkit-details-marker{display:none}
+.actions-menu>summary::after{content:"";width:8px;height:8px;border-right:1.5px solid currentColor;
+  border-bottom:1.5px solid currentColor;transform:rotate(45deg) translateY(-2px);color:var(--text-faint)}
+.actions-menu[open]>summary{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-strong)}
+.actions-menu[open]>summary::after{transform:rotate(-135deg) translate(-2px,-1px);color:var(--accent-strong)}
+.actions-menu>summary:hover{border-color:var(--accent);color:var(--text)}
+.actions-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:18px;
+  padding:0 5px;border-radius:5px;background:var(--bg-panel);font-size:11px;color:var(--text-faint)}
+.actions-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+  padding:8px 0 0}
+.actions-panel button{width:100%;white-space:nowrap;text-align:left}
+.tray-actions .actions-menu{min-width:154px}
+.tray-actions .actions-panel{position:absolute;right:0;top:38px;z-index:12;width:330px;
+  grid-template-columns:repeat(2,minmax(0,1fr));padding:10px;background:var(--bg-panel);
+  border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg)}
+.tray-actions .actions-panel button{font-size:11.5px}
+
+.badge{min-height:26px;padding:4px 8px;border-radius:6px;font-size:11.5px}
+.badge.on{border-color:color-mix(in srgb,var(--green) 54%,var(--border))}
+.badge.off{color:var(--text-dim);border-color:var(--border-soft)}
+.badge.unknown{border-color:color-mix(in srgb,var(--amber) 54%,var(--border))}
+
+.shelf-grid{gap:16px;margin-top:16px}
+.shelf{padding:17px 18px;border-color:var(--border-soft)}
+.shelf.dead{opacity:1;border-style:solid}
+.shelf-head{margin-bottom:12px}.shelf-head .name{font-size:15px}
+.shelf-units{gap:7px;margin:12px 0}
+.unit{padding:4px 8px;border-radius:6px;font-size:11.5px}
+.shelf-note{margin-top:10px;font-size:11.5px;line-height:1.6}
+
+.add-card{padding:22px 24px;margin-bottom:20px;border-color:var(--border-soft)}
+.add-head h2{font-size:18px;margin-bottom:7px}.add-head p{max-width:82ch;font-size:13px;line-height:1.65}
+.add-row{gap:18px;margin-bottom:18px}.add-row label{font-size:11px;gap:7px}
+.add-row input{min-height:40px;width:220px;font-size:13px}
+.add-defaults{gap:14px;padding:13px 15px;margin-bottom:18px;border-color:var(--border-soft)}
+.add-defaults label{font-size:12px}.add-defaults input{min-height:34px;font-size:12px}
+.add-table{font-size:13px;margin-bottom:16px}
+.add-table th{padding:9px 10px;font-size:11px;color:var(--text-dim)}
+.add-table td{padding:8px 10px}.add-table td input{min-height:35px;font-size:12.5px}
+.add-table .node-tag{font-size:12.5px;color:var(--text)}
+.add-status{font-size:12.5px}
+
+.fw-kind{gap:12px;margin-bottom:18px}
+.fw-kind-btn{min-height:76px;padding:14px 15px;border-color:var(--border-soft);border-radius:10px}
+.fw-kind-btn b{font-size:14px}.fw-kind-btn small{font-size:11.5px;line-height:1.5}
+.fw-plan,.fw-pkg{padding:14px 16px;margin-bottom:18px;border-color:var(--border-soft)}
+.fw-plan-row{font-size:12.5px}.fw-plan-row code{font-size:11.5px}
+.btn-upload{min-height:36px;padding:7px 13px;border-radius:8px;border-color:var(--accent);font-size:12.5px}
+#fw-package{min-height:40px;font-size:12.5px}
+.fw-hint{font-size:11.5px}.fw-tray-list{gap:8px;padding-right:8px}
+.fw-tray{padding:10px 12px;border-color:var(--border-soft)}
+.fw-tray-name{font-size:13px}.fw-node{font-size:12px}
+.fw-st,.fw-msg{font-size:11px}
+.scope-k{font-size:11px;letter-spacing:.7px}
+
+.overlay{padding:24px;background:rgba(3,7,9,.76)}
+.modal{width:min(560px,100%);max-height:calc(100vh - 48px);overflow:auto;padding:24px 26px;
+  border-color:var(--border);border-radius:14px;box-shadow:var(--shadow-lg)}
+.modal h3{font-size:19px;margin-bottom:8px}.modal p{font-size:13.5px;line-height:1.65}
+.modal .warn{padding:12px 14px;border-color:color-mix(in srgb,var(--red) 62%,var(--border));
+  border-radius:9px;font-size:13px}
+.modal input{min-height:42px;font-size:14px}
+#m-scope{padding:11px 13px;border-color:var(--border-soft);font-size:13px}
+#m-cmd{padding:9px 11px;border-style:solid;border-color:var(--border-soft);font-size:11.5px;line-height:1.55}
+.modal-foot{gap:10px;padding-top:4px}
+
+.hw-modal{width:min(980px,100%);height:min(780px,calc(100vh - 48px));padding:0;overflow:hidden}
+.hw-head{padding:22px 24px 17px;margin:0;border-color:var(--line)}
+.hw-head h3{font-size:20px}.hw-sub{margin-top:6px;font-size:12.5px;color:var(--text-dim);white-space:pre-wrap}
+.hw-close{width:34px;height:34px;border-color:var(--border);font-size:13px}
+.hw-body{max-height:none;padding:22px 24px 28px;scrollbar-gutter:stable both-edges}
+.hw-sec{margin-bottom:28px}.hw-sec-t{margin-bottom:11px;font-size:11px;color:var(--text-dim)}
+.hw-grid{grid-template-columns:104px minmax(0,1fr) 72px}
+.hw-grid>span{padding:9px 8px;border-bottom-color:var(--border-soft);font-size:13.5px;line-height:1.5}
+.hw-grid>.hw-grid-head{padding-top:0;padding-bottom:8px;color:var(--text-dim)!important;
+  font-size:11px!important;font-weight:700!important;letter-spacing:.65px!important;
+  text-transform:uppercase;border-bottom-color:var(--line)}
+.hw-grid>span:nth-child(3n+1){font-size:11px}.hw-grid>span:nth-child(3n+2){word-break:break-word;overflow-wrap:anywhere}
+.hw-grid>span:nth-child(3n){padding-right:10px}
+.hw-fw{font-size:13.5px;table-layout:fixed}
+.hw-fw th{padding:0 10px 9px;font-size:11px;border-bottom-color:var(--line)}
+.hw-fw th:last-child{text-align:left}
+.hw-fw th:first-child{width:38%}.hw-fw th:last-child{width:62%}
+.hw-fw td{padding:9px 10px;border-bottom-color:var(--border-soft);line-height:1.5}
+.hw-fw td:first-child{white-space:normal;overflow-wrap:anywhere}.hw-fw td:last-child{text-align:left;overflow-wrap:anywhere;word-break:break-word}
+.hw-empty{display:grid;place-items:center;min-height:210px;padding:32px 12px;font-size:13.5px}
+.hw-err{margin:12px 0;padding:16px 18px;font-size:13.5px}
+.hw-modal>.modal-foot{padding:14px 24px;border-top:1px solid var(--border-soft);background:var(--bg-panel-2)}
+
+.result{font-size:12px;line-height:1.55}.foot-note{margin-top:26px;font-size:12px}
+#toasts{right:24px;bottom:24px;gap:10px;max-width:430px}
+.toast{padding:13px 15px;border-left-width:1px;border-color:var(--border);border-radius:10px;
+  box-shadow:var(--shadow-lg);font-size:13px}
+.toast.ok{border-color:color-mix(in srgb,var(--green) 45%,var(--border))}
+.toast.err{border-color:color-mix(in srgb,var(--red) 55%,var(--border))}
+.toast.warn{border-color:color-mix(in srgb,var(--amber) 55%,var(--border))}
+.toast.info{border-color:color-mix(in srgb,var(--accent) 55%,var(--border))}
+
+@media (max-width:1320px){
+  .sidebar{width:214px;flex-basis:214px}.content{padding-inline:22px}.topbar{padding-inline:22px}
+  .node{padding:14px}.node-ips .v{font-size:12px}
+}
+@media (max-width:1120px){
+  .nodes{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .topbar .chip{display:none}
+}
+@media (max-width:760px){
+  .layout{display:block}.sidebar{position:static;width:auto;height:auto;border-right:0;border-bottom:1px solid var(--border-soft)}
+  .brand{padding:16px 18px 12px}.brand .sub,.sidebar-foot,.nav-group{display:none}
+  .nav{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 12px 12px;overflow:visible}
+  .nav-btn{justify-content:center;margin:0;padding:8px 6px;font-size:11.5px}.nav-btn .ico{display:none}
+  .topbar{position:sticky;min-height:58px;padding:9px 14px}.content{padding:16px 12px 40px}
+  .page-title{font-size:15px}.nodes{grid-template-columns:1fr}.tray-head{align-items:flex-start}
+  .tray-actions{margin-left:0;width:100%}.tray-actions .actions-menu{width:100%}
+  .tray-actions .actions-panel{position:static;width:100%;box-shadow:none}
+  .node{min-height:0}.add-card{padding:18px 15px}.add-table{display:block;overflow-x:auto}
+  .hw-modal{height:calc(100vh - 24px)}.hw-head{padding:18px 16px 14px}.hw-body{padding:18px 14px 24px}
+  .hw-grid{grid-template-columns:72px minmax(0,1fr) 48px}.hw-grid>span{padding-inline:4px;font-size:12.5px}
+  .hw-fw th:first-child{width:42%}.hw-fw th:last-child{width:58%}.hw-fw td{padding-inline:6px}
+  #toasts{left:12px;right:12px;bottom:12px;max-width:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;
+    animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+<style>
+/* V3: shared line icons and restrained firmware lifecycle hierarchy. */
+.ui-icon{width:16px;height:16px;flex:0 0 16px;vertical-align:-3px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+button>.ui-icon,.btn-upload>.ui-icon{margin-right:7px}
+.mini>.ui-icon{width:14px;height:14px;flex-basis:14px}
+.nav-btn .ico{border:0;width:18px;height:18px;opacity:1}
+.nav-btn .ico .ui-icon{width:18px;height:18px}
+#theme-toggle{gap:7px}#theme-toggle>.ui-icon{margin:0}
+.fw-job-summary{display:flex;gap:10px 20px;flex-wrap:wrap;margin:12px 0 16px;color:var(--text-dim);font-size:13px;font-variant-numeric:tabular-nums}
+.fw-job-summary b{color:var(--text);margin-left:5px}
+.fw-job-table-wrap{overflow-x:auto}.fw-job-card .add-table{table-layout:fixed;min-width:640px}
+.fw-job-card th:nth-child(1){width:18%}.fw-job-card th:nth-child(2){width:20%}.fw-job-card th:nth-child(3){width:30%}
+.fw-job-card td,.fw-job-sub,#m-scope{overflow-wrap:anywhere;white-space:normal}
+.fw-job-card .fw-msg{max-width:none}.fw-job-card .fw-ver{white-space:normal}
+.fw-version-line{display:block;margin-bottom:4px;font-size:12.5px}.fw-version-label{color:var(--text-faint);font:11.5px/1.5 system-ui;margin-right:6px}
+.fw-job-card .fw-st,.fw-job-card .fw-msg{font-size:12px}
+.fw-detail .ui-icon,.fw-job-history summary .ui-icon,.fw-job-actions .scope-k .ui-icon{margin-right:6px}
+.fw-job-summary-note{margin:0 0 12px;font-size:12px;color:var(--text-dim)}
+.fw-st.pending,.fw-st.stuck,.fw-st.unverified{background:var(--amber-bg);color:var(--amber)}
+.fw-st.neutral{background:var(--bg-panel-2);color:var(--text-dim)}
+.fw-job-close{width:auto;height:auto;padding:6px 10px;white-space:nowrap}
+.fw-job-head-actions{display:flex;gap:8px;align-items:center;flex:none}
+.fw-job-remove{width:28px;height:28px;padding:0;border-radius:7px;border:1px solid var(--border);
+  background:transparent;color:var(--text-faint);font-size:13px;line-height:1;cursor:pointer}
+.fw-job-remove:hover{color:var(--danger,#e5484d);border-color:var(--danger,#e5484d)}
+.fw-job-close .ui-icon{margin:0 6px 0 0}.fw-job-card.collapsed .fw-job-table-wrap,.fw-job-card.collapsed .fw-job-actions{display:none}
+.fw-job-card.collapsed .fw-job-close .ui-icon{transform:rotate(-90deg)}
+.fw-job-actions .recommended{border-color:var(--accent);background:var(--accent-bg)}
+.fw-job-history{margin-bottom:16px}.fw-job-history select{max-width:100%;margin:8px 8px 8px 0;padding:8px;background:var(--bg-panel-2);color:var(--text);border:1px solid var(--border);border-radius:8px}
+.fw-detail summary{cursor:pointer;color:var(--text-dim)}.fw-detail p{white-space:pre-wrap;overflow-wrap:anywhere}
+.btn-upload:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.rack-notice{color:var(--text-dim);padding:18px;border:1px solid var(--border);border-radius:8px}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo-row">
+        <img class="logo-img" src="/static/img/wistron-official.svg" alt="Wistron">
+      </div>
+      <div class="manager-label">Rack Manager</div>
+      <div class="sub">Neutrino L8–L10 · 14 trays · 56 nodes</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-group">Rack</div>
+      <button class="nav-btn active" data-tab="rack" aria-current="page"><span class="ico" aria-hidden="true">R</span>Rack 總覽</button>
+      <button class="nav-btn" data-tab="shelves"><span class="ico" aria-hidden="true">S</span>Power Shelf</button>
+      <button class="nav-btn" data-tab="flash"><span class="ico" aria-hidden="true">F</span>FW Flash</button>
+      <div class="nav-group">System</div>
+      <button class="nav-btn" data-tab="add"><span class="ico" aria-hidden="true">A</span>新增 Tray</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div><b id="foot-os">–</b> / <b id="foot-total">56</b> OS online</div>
+      <div><b id="foot-bmc">–</b> BMC · <b id="foot-on">–</b> power on</div>
+      <div id="clock">–</div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <span class="page-title" id="page-title">Rack 總覽</span>
+      <span class="spacer"></span>
+      <span class="chip">OS <b id="sum-os">–</b> / 56</span>
+      <span class="chip">BMC <b id="sum-bmc">–</b> / 56</span>
+      <span class="chip">Power On <b id="sum-on">–</b></span>
+      <button id="btn-refresh">重新整理</button>
+      <button id="btn-hostname" title="SSH 每台 OS 重新讀取 hostname 並寫回 inventory">刷新 hostname</button>
+      <button id="btn-macs" title="讀取每台 OS、BMC 與 BF4 的網卡 MAC 並寫回 inventory（較慢，約 1 分鐘）">刷新 MAC</button>
+      <button id="theme-toggle" title="切換深色／淺色"><span class="theme-mark" aria-hidden="true"></span><span>Dark</span></button>
+    </div>
+
+    <div class="content">
+      <div id="rack" class="rack"></div>
+
+      <div id="shelves" style="display:none">
+        <h2 class="page-title" style="font-size:16px;margin:28px 0 4px">Power Shelf</h2>
+        <div style="font-size:12px;color:var(--text-dim)">
+          LiteOn Redfish OEM · 整櫃 AC 電源。Powershelf-2（10.36.72.220）已停用。
+        </div>
+        <div id="shelf-grid" class="shelf-grid"></div>
+      </div>
+
+      <div id="flash-pane" style="display:none">
+        <div class="add-card">
+          <div class="add-head">
+            <h2>韌體更新（FW Flash）</h2>
+            <p>選擇韌體類型、更新目標與韌體檔案後，即可確認並開始更新。系統會對所選 Node 並行執行韌體刷寫，並分別追蹤各 Node 的執行進度與結果。刷寫完成後，需依韌體類型手動執行對應的重啟或電源循環。</p>
+          </div>
+
+          <div class="fw-kind" id="fw-kind">
+            <button class="fw-kind-btn active" data-kind="cpld">
+              <b>CPLD</b><small>Targets=[] · Aux Cycle 載入新韌體</small>
+            </button>
+            <button class="fw-kind-btn" data-kind="bmc">
+              <b>BMC</b><small>FW_BMC_0 · BMC Reset 啟用新韌體</small>
+            </button>
+            <button class="fw-kind-btn" data-kind="bios">
+              <b>BIOS</b><small>Targets=[] · Power Cycle 載入新 BIOS</small>
+            </button>
+            <button class="fw-kind-btn" data-kind="bf4">
+              <b>BF4 FW</b><small>FW_BlueField_SMA_0 · Aux Cycle 載入新韌體</small>
+            </button>
+          </div>
+
+          <div class="fw-plan" id="fw-plan">
+            <div class="fw-plan-row"><span class="scope-k">執行命令</span>
+              <code id="fw-cmd">—</code></div>
+            <div class="fw-plan-row"><span class="scope-k">啟用方式</span>
+              <span id="fw-post">—</span></div>
+          </div>
+
+          <div class="fw-pkg">
+            <div class="fw-pkg-head">
+              <span class="scope-k">韌體檔案</span>
+              <label class="btn-upload" tabindex="0" role="button">選擇檔案<input type="file" id="fw-file" accept=".fwpkg,.bin,.img" hidden></label>
+              <span class="add-status" id="fw-upload-status"></span>
+            </div>
+            <select id="fw-package"><option value="">（尚無檔案，請先上傳）</option></select>
+            <div class="fw-pkg-actions">
+              <button id="fw-del" class="mini">刪除選取檔案</button>
+              <span class="fw-hint">檔案存放於 <code id="fw-dir">—</code></span>
+            </div>
+          </div>
+
+          <div class="fw-targets">
+            <div class="fw-targets-head">
+              <span class="scope-k">更新目標</span>
+              <label class="fw-check"><input type="checkbox" id="fw-all"> 全選（56 台）</label>
+              <span class="add-status" id="fw-count">已選 0 台</span>
+            </div>
+            <div id="fw-tray-list" class="fw-tray-list"></div>
+          </div>
+
+          <div class="add-foot">
+            <button id="fw-preview">預覽目前版本</button>
+            <button id="fw-run" class="danger" disabled>執行刷寫</button>
+            <span id="fw-run-status" class="add-status"></span>
+          </div>
+        </div>
+
+        <div class="add-card" id="fw-preview-card" style="display:none">
+          <div class="add-head">
+            <h2>目前韌體版本</h2>
+            <p id="fw-preview-head">—</p>
+          </div>
+          <table class="add-table">
+            <thead><tr>
+              <th>Node</th><th>BMC</th><th>目前版本</th><th>讀取</th>
+            </tr></thead>
+            <tbody id="fw-preview-rows"></tbody>
+          </table>
+        </div>
+
+        <details class="fw-job-history">
+          <summary id="fw-history-toggle">作業紀錄</summary>
+          <p>讀取伺服器保留的 Job；重新開啟不會重新刷寫或清除資料。</p>
+          <select id="fw-history-list" aria-label="選擇既有 Job"><option value="">請展開作業紀錄</option></select>
+          <button id="fw-history-open" type="button">查看 Job</button>
+          <button id="fw-history-delete" type="button" class="danger">刪除此 Job</button>
+          <span id="fw-history-status" role="status"></span>
+        </details>
+        <div id="fw-jobs"></div>
+      </div>
+
+      <div id="add-pane" style="display:none">
+        <div class="add-card">
+          <div class="add-head">
+            <h2>新增 Tray / Node</h2>
+            <p>填入 OS 與 BMC 的 IP、帳密後按「SSH 探測」，系統會實際登入 OS 抓 <code>hostname</code>，
+               確認對應正確再寫入清單。非必填欄位留空則沿用預設帳密（OS <code>root</code>、BMC <code>root</code>）。</p>
+          </div>
+
+          <div class="add-row">
+            <label>Tray 編號
+              <input id="add-tray" type="number" min="0" placeholder="留空＝自動" >
+            </label>
+            <label>Tray 名稱
+              <input id="add-name" type="text" placeholder="留空＝Neutrino{編號}">
+            </label>
+          </div>
+
+          <div class="add-defaults">
+            <span class="scope-k">預設帳密</span>
+            <label>OS user <input id="def-os-user" value="root"></label>
+            <label>OS pass <span class="pw-wrap"><input id="def-os-pass" type="password" value="password"><button class="pw-eye" data-for="def-os-pass" type="button" title="顯示密碼" aria-label="顯示密碼"><span class="sr-only">顯示密碼</span></button></span></label>
+            <label>BMC user <input id="def-bmc-user" value="root"></label>
+            <label>BMC pass <span class="pw-wrap"><input id="def-bmc-pass" type="password" value="0penBmc"><button class="pw-eye" data-for="def-bmc-pass" type="button" title="顯示密碼" aria-label="顯示密碼"><span class="sr-only">顯示密碼</span></button></span></label>
+          </div>
+
+          <table class="add-table">
+            <thead>
+              <tr><th>Node</th><th>OS IP</th><th>BMC IP</th>
+                  <th>OS user</th><th>OS pass</th><th>BMC user</th><th>BMC pass</th><th>結果</th></tr>
+            </thead>
+            <tbody id="add-rows"></tbody>
+          </table>
+
+          <div class="add-foot">
+            <button id="add-probe">SSH 探測</button>
+            <button id="add-save" class="primary" disabled>寫入清單</button>
+            <button id="add-reset">清空</button>
+            <span id="add-status" class="add-status"></span>
+          </div>
+        </div>
+
+        <div class="add-card">
+          <div class="add-head">
+            <h2>已建立的 Tray</h2>
+            <p>新增後會寫入 <code>inventory.json</code>，重新整理即可看到新的 tray。</p>
+          </div>
+          <table class="add-table">
+            <thead><tr><th>Tray</th><th>名稱</th><th>節點</th><th>IP 範圍</th><th></th></tr></thead>
+            <tbody id="list-rows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="foot-note">
+        <div>狀態每 20 秒自動更新。ping 為 ICMP、電源狀態為 BMC Redfish <code>PowerState</code>。</div>
+        <div>所有電源操作都需要二次確認；整櫃 Power Shelf 操作會額外要求輸入 rack 名稱。</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toasts" role="status" aria-live="polite" aria-relevant="additions"></div>
+
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <h3 id="m-title">確認</h3>
+    <p id="m-desc"></p>
+    <div id="m-scope"></div>
+    <div id="m-cmd"></div>
+    <div class="warn" id="m-warn" style="display:none"></div>
+    <div id="m-input-wrap" style="display:none">
+      <input id="m-input" placeholder="" autocomplete="off">
+    </div>
+    <div class="result" id="m-result" style="display:none"></div>
+    <div class="modal-foot">
+      <button id="m-cancel">取消</button>
+      <button id="m-ok" class="danger">確定執行</button>
+    </div>
+  </div>
+</div>
+
+<!-- HW/FW inventory. Separate from #overlay: it is read-only and must not
+     interfere with the confirmation flow's `pending` state. -->
+<div class="overlay" id="hw-overlay">
+  <div class="modal hw-modal" role="dialog" aria-modal="true" aria-labelledby="hw-title">
+    <div class="hw-head">
+      <div>
+        <h3 id="hw-title">HW / FW</h3>
+        <div class="hw-sub" id="hw-sub"></div>
+      </div>
+      <button class="hw-close" id="hw-close" aria-label="關閉"><span class="sr-only">關閉</span></button>
+    </div>
+    <div class="hw-body" id="hw-body" aria-live="polite"></div>
+    <div class="modal-foot">
+      <button id="hw-refresh">重新讀取</button>
+      <button id="hw-done" class="primary">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Authored local SVG paths: one 24px line vocabulary, no remote dependency.
+const UI_ICONS = {
+  server:'M4 3h16v7H4z M4 14h16v7H4z M7 6h.01 M7 17h.01 M11 6h6 M11 17h6',
+  power:'M12 2v10 M5 5a9 9 0 1 0 14 0',
+  'power-off':'M12 2v6 M4 4l16 16 M5 8a9 9 0 0 0 13 12 M19 5a9 9 0 0 1 2 10',
+  moon:'M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10',
+  sun:'M12 8a4 4 0 1 0 0 8a4 4 0 0 0 0-8 M12 2v2 M12 20v2 M2 12h2 M20 12h2 M5 5l1 1 M18 18l1 1 M5 19l1-1 M18 6l1-1',
+  refresh:'M20 7v5h-5 M4 17v-5h5 M6 6a8 8 0 0 1 14 6 M18 18A8 8 0 0 1 4 12',
+  rotate:'M20 5v6h-6 M20 11a8 8 0 1 0-2 7',
+  plug:'M6 3v5 M12 3v5 M4 8h10v3a5 5 0 0 1-10 0z M9 16v6 M19 3l-3 6h5l-3 6',
+  zap:'M13 2L3 14h8l-1 8L21 10h-8z',
+  cpu:'M6 6h12v12H6z M9 9h6v6H9z M9 2v4 M15 2v4 M9 18v4 M15 18v4 M2 9h4 M2 15h4 M18 9h4 M18 15h4',
+  manage:'M3 3h16v6H3z M3 13h7v7H3z M6 6h.01 M6 16h.01 M17 13v2 M17 21v2 M12 18h2 M20 18h2 M14 15l-1-1 M20 21l1 1 M20 15l1-1 M14 21l-1 1 M17 15a3 3 0 1 0 0 6a3 3 0 0 0 0-6',
+  upload:'M12 16V3 M7 8l5-5 5 5 M4 15v6h16v-6',
+  trash:'M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7',
+  scan:'M3 7V3h4 M17 3h4v4 M21 17v4h-4 M7 21H3v-4 M4 12s3-5 8-5 8 5 8 5-3 5-8 5-8-5-8-5 M12 10a2 2 0 1 0 0 4a2 2 0 0 0 0-4',
+  wrench:'M14 6l4 4 4-4a7 7 0 0 1-9 9l-6 6a3 3 0 0 1-4-4l6-6a7 7 0 0 1 9-9z',
+  history:'M3 3v6h6 M3 9a9 9 0 1 1 0 6 M12 7v5l3 2',
+  chevron:'M6 9l6 6 6-6',
+  info:'M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20 M12 11v6 M12 7h.01',
+};
+function uiIcon(name){
+  return `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${UI_ICONS[name] || UI_ICONS.info}"/></svg>`;
+}
+const ACTION_ICONS = {power_on:'power',power_off:'power-off',grace_off:'moon',reboot:'refresh',power_cycle:'plug',aux_cycle:'zap',bmc_reset:'rotate'};
+const ACTIONS = {
+  power_on:    {label:'Power On',    cls:'btn-poweron', sev:'soft', via:'BMC SSH',
+                desc:'/usr/bin/powerctrl.sh power_on',
+                warn:'對機器送開機請求。若 Power Shelf 已斷電，PSU 沒有輸出，開機不會成功，需先恢復 Power Shelf 供電。'},
+  power_off:   {label:'Power Off',   cls:'btn-poweroff', sev:'hard', via:'BMC SSH',
+                desc:'/usr/bin/powerctrl.sh power_off',
+                warn:'立即切斷機箱電源，不通知 OS。未儲存的資料會遺失；需要乾淨關機請改用 Graceful Off。'},
+  grace_off:   {label:'Graceful Off', cls:'btn-graceoff', sev:'hard', via:'BMC SSH',
+                desc:'/usr/bin/powerctrl.sh grace_off',
+                warn:'通知 OS 正常關機。比 Power Off 安全，但若 OS 無回應仍可能卡住。'},
+  // Named 'OS Reboot' because 'Reboot' sat next to 'BMC Reset' and the two
+  // read as the same thing. This one restarts the host; the OS goes down.
+  reboot:      {label:'OS Reboot',   cls:'btn-reboot', sev:'soft', via:'OS SSH',
+                desc:'ssh root@<OS IP> reboot',
+                warn:'透過 SSH 通知 OS 正常關機重開；OS 無回應時指令會失敗，請改用 Power Cycle。'},
+  power_cycle: {label:'Power Cycle', cls:'btn-pcycle', sev:'hard', via:'BMC SSH',
+                desc:'/usr/bin/powerctrl.sh power_cycle',
+                warn:'會切斷並重新上電，比 reboot 更徹底；執行中的工作將中斷。'},
+  aux_cycle:   {label:'Aux Cycle',   cls:'btn-aux',    sev:'hard', via:'BMC SSH',
+                desc:'/usr/bin/stbypowerctrl.sh aux_cycle',
+                warn:'會連 standby 電源一起斷開，是最徹底的重置；執行中的工作將中斷。'},
+  // Restarts the BMC, NOT the host. Kept last and styled differently so it is
+  // not mistaken for OS Reboot (which resets the host).
+  bmc_reset:   {label:'BMC Reset',   cls:'btn-bmcreset', sev:'soft', via:'Redfish',
+                desc:'Manager.Reset GracefulRestart',
+                warn:'只重啟 BMC，主機不受影響、OS 繼續執行。BMC 會離線約 60–90 秒，期間讀不到電源狀態。'}
+};
+let STATUS = null;
+let pending = null;
+// render() replaces the rack DOM every 20 seconds. Keep action disclosures in
+// a separate UI-only set so an operator does not lose context on refresh.
+const ACTION_DISCLOSURES = new Set();
+const RACK_ROOT = document.getElementById('rack');
+let RACK_POINTER_ACTIVE = false;
+let RACK_PENDING_DATA = null;
+
+RACK_ROOT.addEventListener('pointerdown', e => {
+  if (e.isPrimary !== false) RACK_POINTER_ACTIVE = true;
+});
+function finishRackPointer(){
+  if (!RACK_POINTER_ACTIVE) return;
+  RACK_POINTER_ACTIVE = false;
+  if (!RACK_PENDING_DATA) return;
+  const next = RACK_PENDING_DATA;
+  RACK_PENDING_DATA = null;
+  // pointerup precedes click; defer the rebuild until the click has reached its
+  // original target so a refresh can never swallow an operator action.
+  setTimeout(() => render(next), 0);
+}
+window.addEventListener('pointerup', finishRackPointer, true);
+window.addEventListener('pointercancel', finishRackPointer, true);
+
+/* ---------- theme ---------- */
+function applyTheme(mode){
+  document.documentElement.setAttribute('data-theme', mode);
+  localStorage.setItem('rack-theme', mode);
+  const light = mode === 'light';
+  const btn = document.getElementById('theme-toggle');
+  btn.innerHTML = `${uiIcon(light ? 'sun' : 'moon')}<span>${light ? 'Light' : 'Dark'}</span>`;
+  btn.title = light ? '目前為淺色模式，切換至深色模式' : '目前為深色模式，切換至淺色模式';
+  btn.setAttribute('aria-label', btn.title);
+  btn.setAttribute('aria-pressed', String(light));
+}
+applyTheme(localStorage.getItem('rack-theme') || 'dark');
+document.getElementById('theme-toggle').onclick = () =>
+  applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+
+/* ---------- tab nav ---------- */
+const TITLES = {rack:'Rack 總覽', shelves:'Power Shelf 電源管理',
+                flash:'韌體更新（FW Flash）', add:'Tray / Node 管理'};
+const NAV_ICONS = {rack:'server',shelves:'plug',flash:'cpu',add:'manage'};
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  const tab = btn.dataset.tab;
+  btn.innerHTML = `<span class="ico" aria-hidden="true">${uiIcon(NAV_ICONS[tab])}</span>${TITLES[tab]}`;
+});
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.nav-btn').forEach(b => {
+      b.classList.remove('active');
+      b.removeAttribute('aria-current');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-current', 'page');
+    const tab = btn.dataset.tab;
+    document.getElementById('page-title').textContent = TITLES[tab] || tab;
+    document.getElementById('rack').style.display = tab === 'rack' ? '' : 'none';
+    document.getElementById('shelves').style.display = tab === 'shelves' ? '' : 'none';
+    document.getElementById('flash-pane').style.display = tab === 'flash' ? '' : 'none';
+    document.getElementById('add-pane').style.display = tab === 'add' ? '' : 'none';
+    if (tab === 'rack') window.scrollTo({top:0, behavior:'smooth'});
+    if (tab === 'flash') fwRefreshTargets();
+  };
+});
+
+const el = (tag, cls, html) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html !== undefined) n.innerHTML = html;
+  return n;
+};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- toast ----------
+   Every power action reports here: an immediate "sent" toast, then a result
+   toast. Errors are never silent — a failed cycle must be visible. */
+const TOAST_ICON = {ok:'OK', err:'ERR', warn:'WARN', info:'INFO'};
+function toast(kind, title, detail, ms){
+  const box = document.getElementById('toasts');
+  const t = el('div', 'toast ' + kind);
+  t.innerHTML = `<span class="ti">${TOAST_ICON[kind] || 'i'}</span>
+    <div class="tb"><div class="tt">${esc(title)}</div>
+      ${detail ? `<div class="td">${esc(detail)}</div>` : ''}</div>
+    <button class="tx" aria-label="關閉"><span class="sr-only">關閉</span></button>`;
+  const close = () => {
+    if (!t.isConnected) return;
+    t.classList.add('out');
+    setTimeout(() => t.remove(), 200);
+  };
+  t.querySelector('.tx').onclick = close;
+  box.appendChild(t);
+  const life = ms === undefined ? (kind === 'err' ? 12000 : 5000) : ms;
+  if (life > 0) setTimeout(close, life);
+  // Keep the stack short so a burst of results stays readable.
+  while (box.children.length > 5) box.firstElementChild.remove();
+  return close;
+}
+
+/* ---------- render ---------- */
+function dot(up){ return `<span class="dot ${up ? 'on' : 'off'}" aria-hidden="true"></span>`; }
+function dotKind(kind){ return `<span class="dot ${kind}" aria-hidden="true"></span>`; }
+function bf4Addr(ip, up){
+  // Four states, not two. A missing address is not a fault, and "poll has not
+  // answered yet" is not the same as "probed and unreachable" — showing the
+  // latter before the first poll lands is a false alarm on every reload.
+  if (!ip) return `<span class="bf4-addr bf4-none">${dotKind('unknown')}<span>未設定</span></span>`;
+  if (up === undefined || up === null)
+    return `<span class="bf4-addr bf4-pending" title="等待探測結果">`
+      + `${dotKind('unknown')}<span>${esc(ip)}</span></span>`;
+  return `<span class="bf4-addr" title="${up ? 'ping 有回應' : 'ping 無回應'}">`
+    + `${dotKind(up ? 'on' : 'off')}<span>${esc(ip)}</span></span>`;
+}
+
+function powerBadge(state){
+  // Off is a normal state (machine simply not powered), not a fault.
+  const cls = state === 'On' ? 'on' : state === 'Off' ? 'off' : 'unknown';
+  return `<span class="badge ${cls}">${esc(state)}</span>`;
+}
+
+function healthSummary(label, count, total){
+  const full = count === total;
+  const none = count === 0;
+  const kind = full ? 'on' : none ? 'off' : 'warn';
+  const state = full ? 'Healthy' : none ? 'Offline' : 'Partial';
+  const stateClass = full ? 'is-healthy' : none ? 'is-offline' : 'is-partial';
+  return `<span class="status-line ${stateClass}">${dotKind(kind)}`
+    + `<strong>${esc(label)} ${count}/${total}</strong><em>${state}</em></span>`;
+}
+
+function makeActionMenu(stateKey, label, buttonPrefix, onAction){
+  const details = el('details', 'actions-menu');
+  details.dataset.uiKey = stateKey;
+  details.open = ACTION_DISCLOSURES.has(stateKey);
+  details.addEventListener('toggle', () => {
+    if (details.open) ACTION_DISCLOSURES.add(stateKey);
+    else ACTION_DISCLOSURES.delete(stateKey);
+  });
+  const summary = el('summary', '',
+    `<span>${esc(label)}</span><span class="actions-count">${Object.keys(ACTIONS).length}</span>`);
+  summary.dataset.focusKey = `${stateKey}:summary`;
+  summary.setAttribute('aria-label', `${label}，共 ${Object.keys(ACTIONS).length} 項`);
+  details.appendChild(summary);
+  const panel = el('div', 'actions-panel');
+  for (const [key, a] of Object.entries(ACTIONS)){
+    const b = el('button', 'mini ' + (a.cls || ''), `${uiIcon(ACTION_ICONS[key])}${buttonPrefix}${a.label}`);
+    b.type = 'button';
+    b.dataset.focusKey = `${stateKey}:action:${key}`;
+    b.onclick = () => onAction(key, a);
+    panel.appendChild(b);
+  }
+  details.appendChild(panel);
+  return details;
+}
+
+function render(data){
+  if (RACK_POINTER_ACTIVE){
+    RACK_PENDING_DATA = data;
+    return;
+  }
+  RACK_PENDING_DATA = null;
+  const active = document.activeElement;
+  const focusKey = active instanceof HTMLElement && RACK_ROOT.contains(active)
+    ? active.dataset.focusKey || null : null;
+  const validDisclosureKeys = new Set();
+  data.trays.forEach(t => {
+    validDisclosureKeys.add(`tray:${t.tray}`);
+    t.nodes.forEach(n => validDisclosureKeys.add(`node:${n.name}`));
+  });
+  for (const key of ACTION_DISCLOSURES){
+    if (!validDisclosureKeys.has(key)) ACTION_DISCLOSURES.delete(key);
+  }
+
+  STATUS = data;
+  document.getElementById('sum-os').textContent  = data.summary.os_up;
+  document.getElementById('sum-bmc').textContent = data.summary.bmc_up;
+  document.getElementById('sum-on').textContent  = data.summary.powered_on;
+  document.getElementById('foot-os').textContent  = data.summary.os_up;
+  document.getElementById('foot-bmc').textContent = data.summary.bmc_up;
+  document.getElementById('foot-on').textContent  = data.summary.powered_on;
+  document.getElementById('foot-total').textContent = data.summary.nodes;
+  document.getElementById('clock').textContent   = data.ts;
+
+  const rack = RACK_ROOT;
+  rack.innerHTML = '';
+
+  for (const t of data.trays){
+    const upCount  = t.nodes.filter(n => n.os_up).length;
+    const bmcCount = t.nodes.filter(n => n.bmc_up).length;
+
+    const box = el('div', 'tray');
+    const head = el('div', 'tray-head');
+    head.appendChild(el('div', 'tray-name', esc(t.tray_name)));
+    head.appendChild(el('div', 'tray-meta',
+      healthSummary('OS', upCount, t.nodes.length)
+      + healthSummary('BMC', bmcCount, t.nodes.length)));
+
+    const acts = el('div', 'tray-actions');
+    acts.appendChild(makeActionMenu(`tray:${t.tray}`, 'Tray actions', 'Tray ', (key, a) => {
+      confirmAction({
+        kind:'tray', tray:t.tray, action:key,
+        title:`${t.tray_name} · ${a.label}`,
+        desc:`對 ${esc(t.tray_name)} 的 <b>全部 ${t.nodes.length} 個 node</b> 執行 ${a.label}（${a.desc}）。`,
+        need: t.tray_name,
+      });
+    }));
+    head.appendChild(acts);
+    box.appendChild(head);
+
+    const grid = el('div', 'nodes');
+    for (const n of t.nodes){
+      const cell = el('div', 'node');
+      const idRow = el('div', 'node-id', `<span>${esc(n.name)}</span>`);
+      const hwBtn = el('button', 'hw-btn', 'HW/FW');
+      hwBtn.dataset.focusKey = `node:${n.name}:hw`;
+      hwBtn.title = '查看硬體與韌體版本（HW/FW）';
+      hwBtn.onclick = () => openHw(n.name, hwBtn);
+      idRow.appendChild(hwBtn);
+      cell.appendChild(idRow);
+      // Each MAC trails its own IP on the same line, small and faint: it
+      // identifies the port, it is not a second address to read.
+      const ipCell = (ip, mac) => `<span class="v">${ip}`
+        + (mac ? `<span class="mac">${esc(mac)}</span>` : '') + `</span>`;
+      const bf4Cell = (ip, up, mac) => `<span class="v bf4-v">${bf4Addr(ip, up)}`
+        + (mac ? `<span class="mac">${esc(mac)}</span>` : '') + `</span>`;
+
+      cell.appendChild(el('div', 'node-ips',
+        `<span class="k">OS</span>${ipCell(esc(n.os_ip), n.os_mac)}
+         <span class="k">BMC</span>${ipCell(esc(n.bmc_ip), n.bmc_mac)}`
+        + (n.bf4_os_ip || n.bf4_bmc_ip
+          ? `<span class="k bf4-k">BF4 OS</span>${bf4Cell(n.bf4_os_ip, n.bf4_os_up, n.bf4_os_mac)}
+             <span class="k bf4-k">BF4 BMC</span>${bf4Cell(n.bf4_bmc_ip, n.bf4_bmc_up, n.bf4_bmc_mac)}`
+          : '')));
+      // Only worth a row when it disagrees with the name this card already
+      // shows. A node that names itself "localhost-n3" is the case that
+      // matters, so mismatch is called out rather than hidden.
+      const hostDiffers = n.os_hostname && n.os_hostname !== n.name;
+      if (!n.os_hostname || hostDiffers){
+        cell.appendChild(el('div', 'node-host',
+          n.os_hostname
+            ? `<span class="k">host</span><span class="v host-mismatch" title="OS 自報的 hostname 與清單名稱不一致">${esc(n.os_hostname)}</span>`
+            : `<span class="k">host</span><span class="host-unknown">未取得</span>`));
+      }
+      const powerClass = n.power === 'On' ? 'power-on'
+        : n.power === 'Off' ? 'power-off' : 'is-unknown';
+      cell.appendChild(el('div', 'node-state',
+        `<span class="state-chip ${n.os_up ? 'is-up' : 'is-down'}">`
+          + `${dotKind(n.os_up ? 'on' : 'off')}<span class="state-label">OS</span><span class="state-value">${n.os_up ? 'Online' : 'Offline'}</span></span>`
+        + `<span class="state-chip ${n.bmc_up ? 'is-up' : 'is-down'}">`
+          + `${dotKind(n.bmc_up ? 'on' : 'off')}<span class="state-label">BMC</span><span class="state-value">${n.bmc_up ? 'Online' : 'Offline'}</span></span>`
+        + `<span class="state-chip ${powerClass}">`
+          + `${dotKind(n.power === 'On' ? 'on' : n.power === 'Off' ? 'off' : 'unknown')}`
+          + `<span class="state-label">Power</span><span class="state-value">${esc(n.power)}</span></span>`));
+
+      const na = el('div', 'node-actions');
+      na.appendChild(makeActionMenu(`node:${n.name}`, 'Power actions', '', (key, a) => {
+        confirmAction({
+          kind:'node', node:n.name, action:key,
+          title:`${n.name} · ${a.label}`,
+          desc:`對 <b>${esc(n.name)}</b>（BMC ${esc(n.bmc_ip)}）執行 ${a.label}（${a.desc}）。`,
+          need:null,
+        });
+      }));
+      cell.appendChild(na);
+      grid.appendChild(cell);
+    }
+    box.appendChild(grid);
+    rack.appendChild(box);
+  }
+  if (!data.trays.length) rack.appendChild(el('div','rack-notice','尚未建立 Tray。請至「Tray / Node 管理」新增並確認 Inventory。'));
+  renderShelves(data);
+  if (focusKey){
+    const nextFocus = [...rack.querySelectorAll('[data-focus-key]')]
+      .find(node => node.dataset.focusKey === focusKey);
+    nextFocus?.focus({preventScroll:true});
+  }
+}
+
+function renderShelves(data){
+  const grid = document.getElementById('shelf-grid');
+  grid.innerHTML = '';
+  for (const s of data.shelves){
+    const card = el('div', 'shelf' + (s.up ? '' : ' dead'));
+    const head = el('div', 'shelf-head');
+    head.appendChild(el('span', '', dot(s.up)));
+    head.appendChild(el('span', 'name', `Powershelf-${s.shelf}`));
+    head.appendChild(el('span', 'chip', esc(s.ip)));
+    card.appendChild(head);
+
+    const units = el('div', 'shelf-units');
+    units.id = `units-${s.shelf}`;
+    units.appendChild(el('span', 'unit', '讀取中…'));
+    card.appendChild(units);
+
+    const row = el('div', 'shelf-units');
+    const bOn  = el('button', 'mini primary', uiIcon('power') + 'Power On');
+    const bOff = el('button', 'mini danger', uiIcon('power-off') + 'Power Off');
+    const bSt  = el('button', 'mini', uiIcon('refresh') + '讀取狀態');
+    bOn.onclick = () => shelfConfirm(s, 'on');
+    bOff.onclick = () => shelfConfirm(s, 'off');
+    bSt.onclick = () => shelfStatus(s);
+    row.append(bOn, bOff, bSt);
+    card.appendChild(row);
+
+    card.appendChild(el('div', 'shelf-note',
+      'Power OFF 會切斷此 shelf 的 PSU 輸出，該區機台會斷電；BMC 走 standby 電源，仍可遠端喚回。'));
+    grid.appendChild(card);
+  }
+
+  // Refresh shelf unit detail after the cards exist.
+  for (const s of data.shelves) if (s.up) shelfStatus(s, true);
+}
+
+async function shelfStatus(s, quiet){
+  const box = document.getElementById(`units-${s.shelf}`);
+  if (!box) return;
+  if (!quiet) box.innerHTML = '<span class="unit">讀取中…</span>';
+  try {
+    const r = await fetch('/api/shelf/power', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({shelf:s.shelf, action:'status'}),
+    });
+    const d = await r.json();
+    box.innerHTML = '';
+    (d.units || []).forEach(u => {
+      const st = String(u.state || '?');
+      // Standby / Off are healthy idle states, not failures — only genuinely
+      // broken units (absent/error/fault) earn the red treatment.
+      const cls = /^(on|enabled|ok|normal|active)$/i.test(st) ? 'ok'
+                : /^(absent|error|fail|failed|fault|critical)$/i.test(st) ? 'bad'
+                : 'idle';
+      const show = st === 'Standby' ? 'Standby（待機）' : st;
+      const w = (u.watts !== null && u.watts !== undefined)
+        ? ` · ${Math.round(u.watts)}W` : '';
+      box.appendChild(el('span', 'unit ' + cls, `p${u.unit}: ${esc(show)}${w}`));
+    });
+    if (!(d.units || []).length) box.appendChild(el('span', 'unit', '無資料'));
+  } catch (e) {
+    box.innerHTML = '<span class="unit bad">讀取失敗</span>';
+  }
+}
+
+/* ---------- fw flash ---------- */
+const FW_SELECTED = new Set();        // explicit node picks
+let fwKind = 'cpld';
+const FW_KIND_LABEL = {cpld:'CPLD', bmc:'BMC', bios:'BIOS', bf4:'BF4 FW',
+                       hpm:'HPM MCU'};
+let fwJobId = null;
+let fwPoll = null;
+let fwAllMode = false;
+
+function fwSetStatus(id, msg, kind){
+  const s = document.getElementById(id);
+  if (!s) return;
+  s.textContent = msg || '';
+  s.className = 'add-status' + (kind ? ' ' + kind : '');
+}
+
+function fwTargetsSpec(){
+  if (fwAllMode) return {mode:'all'};
+  return {mode:'node', nodes:[...FW_SELECTED]};
+}
+
+function fwUpdateCount(){
+  const n = fwAllMode ? 56 : FW_SELECTED.size;
+  document.getElementById('fw-count').textContent = `已選 ${n} 台`;
+  document.getElementById('fw-run').disabled =
+    !(n > 0 && document.getElementById('fw-package').value);
+}
+
+let fwPkgLoading = false;
+async function fwLoadPackages(){
+  const sel = document.getElementById('fw-package');
+  // Guard against overlapping loads (init + tab switch + upload all call this);
+  // concurrent appends were producing duplicated <option> rows.
+  if (fwPkgLoading) return;
+  fwPkgLoading = true;
+  const prev = sel.value;
+  try {
+    const d = await (await fetch('/api/flash/packages')).json();
+    const dirEl = document.getElementById('fw-dir');
+    if (dirEl && d.dir) dirEl.textContent = d.dir + '/';
+    sel.innerHTML = '';
+    if (!d.packages.length){
+      sel.innerHTML = '<option value="">（尚無檔案，請先上傳）</option>';
+    } else {
+      d.packages.forEach(p => {
+        const mb = (p.size / 1048576).toFixed(1);
+        const o = document.createElement('option');
+        o.value = p.name;
+        const tag = p.kind ? (FW_KIND_LABEL[p.kind] || p.kind)
+                  : (p.size ? '未分類' : '');
+        o.textContent = `${p.name}  ·  ${mb} MB  ·  ${tag}` +
+                        `  ·  ${p.mtime}`;
+        sel.appendChild(o);
+      });
+      sel.value = (prev && d.packages.some(p => p.name === prev))
+        ? prev : d.packages[0].name;
+    }
+  } catch (e){
+    sel.innerHTML = `<option value="">讀取失敗：${esc(String(e))}</option>`;
+  } finally {
+    fwPkgLoading = false;
+  }
+  fwUpdateCount();
+}
+
+function fwRefreshTargets(){
+  // Rebuild from live status but keep whatever the operator already ticked.
+  const box = document.getElementById('fw-tray-list');
+  if (box.querySelector('.fw-tray')) { fwSyncFromSelection(); fwLoadPackages(); return; }
+  fwBuildTargets();
+  fwLoadPackages();
+}
+
+async function fwBuildTargets(){
+  const box = document.getElementById('fw-tray-list');
+  box.innerHTML = '';
+  let status;
+  try { status = await (await fetch('/api/status')).json(); }
+  catch (e){ box.innerHTML = `<div class="fw-msg">讀取失敗：${esc(String(e))}</div>`; return; }
+
+  status.trays.forEach(t => {
+    const wrap = el('div', 'fw-tray');
+    wrap.dataset.tray = t.tray;
+    const row = el('div', 'fw-tray-row');
+
+    const tp = el('label', 'fw-check');
+    const tcb = el('input');
+    tcb.type = 'checkbox';
+    tcb.dataset.role = 'tray-toggle';
+    tcb.dataset.tray = t.tray;
+    tp.appendChild(tcb);
+    tp.appendChild(document.createTextNode(' ' + t.tray_name));
+    row.appendChild(tp);
+
+    const nodes = el('div', 'fw-nodes');
+    t.nodes.forEach(n => {
+      const lb = el('label', 'fw-node');
+      const cb = el('input');
+      cb.type = 'checkbox';
+      cb.dataset.role = 'node-toggle';
+      cb.dataset.node = n.name;
+      lb.appendChild(cb);
+      lb.appendChild(document.createTextNode(' n' + n.node));
+      nodes.appendChild(lb);
+    });
+    row.appendChild(nodes);
+    wrap.appendChild(row);
+    box.appendChild(wrap);
+  });
+  fwSyncFromSelection();
+}
+
+// One delegated listener for the whole tray list: rebuilds never lose handlers.
+document.getElementById('fw-tray-list').addEventListener('change', e => {
+  const cb = e.target;
+  if (!cb.dataset || !cb.dataset.role) return;
+  const trayBox = cb.closest('.fw-tray');
+  const nodeBoxes = [...trayBox.querySelectorAll('input[data-role="node-toggle"]')];
+
+  if (cb.dataset.role === 'tray-toggle'){
+    nodeBoxes.forEach(nb => {
+      if (cb.checked) FW_SELECTED.add(nb.dataset.node);
+      else FW_SELECTED.delete(nb.dataset.node);
+    });
+  } else {
+    if (cb.checked) FW_SELECTED.add(cb.dataset.node);
+    else FW_SELECTED.delete(cb.dataset.node);
+  }
+  fwAllMode = false;
+  document.getElementById('fw-all').checked = false;
+  fwSyncFromSelection();
+});
+
+function fwSyncFromSelection(){
+  document.querySelectorAll('#fw-tray-list .fw-tray').forEach(w => {
+    const cbs = [...w.querySelectorAll('.fw-node input')];
+    const on = cbs.filter(c => FW_SELECTED.has(c.dataset.node)).length;
+    cbs.forEach(c => {
+      c.checked = fwAllMode || FW_SELECTED.has(c.dataset.node);
+      c.closest('.fw-node').classList.toggle('partial', !fwAllMode && c.checked);
+    });
+    const trayBox = w.querySelector('.fw-check input');
+    trayBox.checked = fwAllMode || (on > 0 && on === cbs.length);
+    trayBox.indeterminate = !fwAllMode && on > 0 && on < cbs.length;
+    w.classList.toggle('on', trayBox.checked);
+  });
+  fwUpdateCount();
+}
+
+async function fwChooseKind(kind){
+  fwKind = kind;
+  document.querySelectorAll('.fw-kind-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.kind === kind));
+  // Render the plan locally so the panel is never blank while the fetch runs,
+  // and so a failed fetch cannot leave "—" behind.
+  const local = {
+    cpld: {t: '[]', note: '刷寫完成後，需執行 Aux Cycle 載入新韌體。'},
+    bmc:  {t: '["/redfish/v1/UpdateService/FirmwareInventory/FW_BMC_0"]',
+           note: '刷寫完成後，需執行 BMC Reset 啟用新韌體。'},
+    bios: {t: '[]',
+           note: '刷寫完成後，需執行 Power Cycle 載入新 BIOS。'},
+    bf4:  {t: '["/redfish/v1/UpdateService/FirmwareInventory/FW_BlueField_SMA_0"]',
+           extra: ',"@Redfish.OperationApplyTime":"Immediate"',
+           note: '刷寫完成後，需執行 Aux Cycle 載入新 MCU 韌體。'},
+  }[kind];
+  if (local){
+    document.getElementById('fw-cmd').textContent =
+      `POST https://{BMC}/redfish/v1/UpdateService/update-multipart\n` +
+      `     -F 'UpdateParameters={"Targets":${local.t}${local.extra || ''}}'`;
+    document.getElementById('fw-post').textContent = local.note;
+  }
+  try {
+    const d = await (await fetch('/api/flash/dryrun', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({kind, package: document.getElementById('fw-package').value,
+                            targets:{mode:'node', nodes:[]}}),
+    })).json();
+    if (d.ok && d.post_note)
+      document.getElementById('fw-post').title = d.post_note;
+    // Switching kind with an incompatible package already loaded is the same
+    // mistake as uploading one: say so immediately instead of waiting for 執行刷寫.
+    if (d.ok && d.package_mismatch){
+      fwSetStatus('fw-run-status',
+        `此檔案判定為 ${FW_KIND_LABEL[d.package_kind] || d.package_kind}，` +
+        `與 ${FW_KIND_LABEL[kind] || kind} 不符`, 'bad');
+    } else if (d.ok && !d.package_mismatch){
+      fwSetStatus('fw-run-status', '');
+    }
+  } catch (e){ /* local plan already rendered above */ }
+}
+
+async function fwUpload(file){
+  if (!file) return;
+  fwSetStatus('fw-upload-status', `正在上傳韌體檔案… ${file.name}`);
+  try {
+    const b64 = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result).split(',')[1]);
+      fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+    const r = await (await fetch('/api/flash/upload', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name: file.name, data_b64: b64}),
+    })).json();
+    if (!r.ok){
+      fwSetStatus('fw-upload-status', '上傳失敗：' + r.error, 'bad');
+      toast('err', '上傳失敗', r.error);
+      return;
+    }
+    fwSetStatus('fw-upload-status',
+      `已存 ${r.name}（${(r.size/1048576).toFixed(1)} MB）`, 'ok');
+    toast('ok', '檔案已上傳', r.name);
+    await fwLoadPackages();
+    document.getElementById('fw-package').value = r.name;
+    fwUpdateCount();
+    fwCheckPackage(r);
+  } catch (e){
+    fwSetStatus('fw-upload-status', '上傳失敗：' + e, 'bad');
+  }
+}
+
+// After an upload, say out loud what the file looks like it is. A package whose
+// name cannot be classified is fine (BIOS / E1.S builds have no pattern yet),
+// but a package that classifies as something OTHER than the selected kind, or
+// carries an sb4 / transition / debug marker, gets a popup so the operator can
+// catch the wrong file before it reaches a BMC.
+function fwCheckPackage(r){
+  const detected = r.kind || null;
+  const reasons = r.reasons || [];
+  const mismatch = detected && detected !== fwKind;
+  const lowConf = r.confidence === 'low';
+  const unclassified = !detected;
+
+  if (!mismatch && !lowConf && !reasons.length && !unclassified){
+    fwSetStatus('fw-upload-status',
+      `已存 ${r.name}（${(r.size/1048576).toFixed(1)} MB）· 判定為 ` +
+      `${FW_KIND_LABEL[detected] || detected}`, 'ok');
+    return;
+  }
+
+  const sel = FW_KIND_LABEL[fwKind] || fwKind;
+  const title = mismatch ? '韌體類型不符，請確認' : '請確認上傳的檔案';
+  let desc;
+  if (mismatch)
+    desc = `你目前選的是 <b>${esc(sel)}</b>，但這個檔案看起來是 `
+         + `<b>${esc(FW_KIND_LABEL[detected] || detected)}</b>。`
+         + '<br>直接刷寫可能寫入錯誤的元件。';
+  else if (lowConf)
+    desc = `檔案 <code>${esc(r.name)}</code> 的大小與判定出的類型不符，`
+         + '可能是下載不完整或檔案被改名。';
+  else if (unclassified)
+    desc = `無法從檔名判斷 <code>${esc(r.name)}</code> 是哪一種韌體。`
+         + '請自行確認它是正確的檔案再繼續。';
+  else
+    desc = `檔案 <code>${esc(r.name)}</code> 判定為 `
+         + `<b>${esc(FW_KIND_LABEL[detected] || detected)}</b>。`;
+
+  const rows = [];
+  rows.push(`<div class="scope-k">檔案</div> <code>${esc(r.name)}</code>`);
+  rows.push(`<div class="scope-k">判定</div> ${detected
+      ? `<b>${esc(FW_KIND_LABEL[detected] || detected)}</b>`
+        + (r.confidence ? `（${r.confidence === 'high' ? '高' : '低'}信心）` : '')
+      : '<b>無法判斷</b>'}`);
+  rows.push(`<div class="scope-k">目前選擇</div> <b>${esc(sel)}</b>`);
+  if (reasons.length)
+    rows.push(`<div class="scope-k">注意</div> ` +
+      reasons.map(x => `<div>· ${esc(x)}</div>`).join(''));
+
+  document.getElementById('m-title').textContent = title;
+  document.getElementById('m-desc').innerHTML = desc;
+  document.getElementById('m-scope').innerHTML = rows.join(' ');
+  document.getElementById('m-cmd').textContent = '';
+  const warn = document.getElementById('m-warn');
+  warn.style.display = 'block';
+  warn.textContent = mismatch
+    ? '若這其實是正確的檔案，請改選對應的韌體類型；若確定要在目前類型下強制刷寫，'
+      + '系統會在刷寫前再次要求確認。'
+    : '檔案已存進韌體目錄，可以繼續使用。';
+  document.getElementById('m-input-wrap').style.display = 'none';
+  document.getElementById('m-result').style.display = 'none';
+  document.getElementById('m-ok').className = 'primary';
+  document.getElementById('m-ok').onclick = () => {
+    closeModal();
+    if (mismatch && detected in FW_KIND_LABEL && FW_KIND_LABEL[detected]){
+      // Offer the obvious fix rather than making them hunt for the button.
+      if (document.querySelector(`.fw-kind-btn[data-kind="${detected}"]`))
+        fwChooseKind(detected);
+    }
+  };
+  document.getElementById('m-ok').textContent = mismatch ? '切換到判定類型' : '知道了';
+  document.getElementById('m-cancel').style.display = mismatch ? '' : 'none';
+  document.getElementById('overlay').classList.add('show');
+}
+
+// The version each node reports right now. Kept on screen (not a toast) so an
+// operator can compare it with the 前 → 後 column once the flash finishes.
+function fwRenderPreview(r){
+  const card = document.getElementById('fw-preview-card');
+  const tb = document.getElementById('fw-preview-rows');
+  const ok = r.nodes.filter(n => n.version).length;
+  const bad = r.nodes.length - ok;
+  document.getElementById('fw-preview-head').textContent =
+    `${r.label} · 共 ${r.nodes.length} 台 · ${ok} 台可讀到版本` +
+    (bad ? ` · ${bad} 台讀不到` : '');
+  tb.innerHTML = '';
+  for (const n of r.nodes){
+    const tr = el('tr');
+    const has = !!n.version;
+    tr.innerHTML =
+      `<td class="node-tag">${esc(n.node)}</td>` +
+      `<td class="fw-bmc">${esc(n.bmc_ip || '—')}</td>` +
+      `<td class="fw-ver">${has ? esc(n.version) : '—'}</td>` +
+      `<td>${has
+        ? '<span class="probe-ok">可讀</span>'
+        : '<span class="probe-bad">讀不到</span>'}</td>`;
+    tb.appendChild(tr);
+  }
+  card.style.display = '';
+}
+
+async function fwPreview(){
+  const spec = fwTargetsSpec();
+  if (spec.mode === 'node' && !spec.nodes.length)
+    return fwSetStatus('fw-run-status', '請先選擇目標', 'bad');
+  fwSetStatus('fw-run-status', '正在讀取目前韌體版本…');
+  try {
+    const r = await (await fetch('/api/flash/dryrun', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({kind: fwKind, targets: spec}),
+    })).json();
+    if (!r.ok) return fwSetStatus('fw-run-status', '預覽失敗：' + r.error, 'bad');
+    const ok = r.nodes.filter(n => n.version).length;
+    fwSetStatus('fw-run-status',
+      `${r.nodes.length} 台 · ${ok} 台可讀到版本（${r.label}）`,
+      ok === r.nodes.length ? 'ok' : 'bad');
+    fwRenderPreview(r);
+  } catch (e){
+    fwSetStatus('fw-run-status', '預覽失敗：' + e, 'bad');
+  }
+}
+
+async function fwRun(){
+  const spec = fwTargetsSpec();
+  const pkg = document.getElementById('fw-package').value;
+  if (!pkg) return fwSetStatus('fw-run-status', '請先選擇韌體檔案', 'bad');
+  if (spec.mode === 'node' && !spec.nodes.length)
+    return fwSetStatus('fw-run-status', '請先選擇目標', 'bad');
+
+  const count = fwAllMode ? 56 : FW_SELECTED.size;
+  const kindLabel = fwKind.toUpperCase();
+
+  // Same confirm-then-token flow as the power buttons: fetch a one-shot token
+  // from dry_run, show the modal, and only consume it if the operator confirms.
+  let plan;
+  try {
+    plan = await (await fetch('/api/flash/run?dry_run=1', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({kind: fwKind, package: pkg, targets: spec}),
+    })).json();
+    if (!plan.ok && !plan.dry_run){
+      // A kind/package mismatch comes back as 409 with the detected kind: show
+      // that as a popup instead of a one-line status, because it is the exact
+      // mistake (bf4 vs hpm share a prefix and a size) this check exists for.
+      if (plan.mismatch){
+        fwShowMismatch(pkg, plan.mismatch, spec, count);
+        return;
+      }
+      return fwSetStatus('fw-run-status', '無法執行：' + plan.error, 'bad');
+    }
+  } catch (e){
+    return fwSetStatus('fw-run-status', '無法執行：' + e, 'bad');
+  }
+  fwConfirmRun(pkg, plan, spec, count, false);
+}
+
+// The blocked case: the package is not the kind the operator picked. Explain
+// what each side is, and let them proceed only by ticking a box.
+function fwShowMismatch(pkg, mm, spec, count){
+  const det = FW_KIND_LABEL[mm.detected] || mm.detected;
+  const sel = FW_KIND_LABEL[mm.chosen] || mm.chosen;
+  document.getElementById('m-title').textContent = '韌體類型不符，已阻擋';
+  document.getElementById('m-desc').innerHTML =
+    `檔案 <code>${esc(pkg)}</code> 判定為 <b>${esc(det)}</b>，` +
+    `但你要刷的是 <b>${esc(sel)}</b>。<br>` +
+    '刷錯元件可能造成無法遠端復原的損壞。';
+  document.getElementById('m-scope').innerHTML =
+    `<span class="scope-k">目標</span> <b>${count} 台</b>`;
+  document.getElementById('m-cmd').textContent =
+    'POST https://{BMC}/redfish/v1/UpdateService/update-multipart';
+  const warn = document.getElementById('m-warn');
+  warn.style.display = 'block';
+  warn.textContent = '建議改用正確的韌體類型或檔案。';
+  document.getElementById('m-input-wrap').style.display = 'none';
+  document.getElementById('m-result').style.display = 'none';
+  const ok = document.getElementById('m-ok');
+  ok.className = 'danger';
+  ok.textContent = '仍要強制刷寫';
+  ok.disabled = false;
+  clearInterval(guardTimer);
+  const cancel = document.getElementById('m-cancel');
+  cancel.style.display = '';
+  ok.onclick = async () => {
+    closeModal();
+    let p2;
+    try {
+      p2 = await (await fetch('/api/flash/run?dry_run=1', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({kind: fwKind, package: pkg, targets: spec,
+                              ack_mismatch: true}),
+      })).json();
+      if (!p2.ok && !p2.dry_run)
+        return fwSetStatus('fw-run-status', '無法執行：' + p2.error, 'bad');
+    } catch (e){
+      return fwSetStatus('fw-run-status', '無法執行：' + e, 'bad');
+    }
+    fwConfirmRun(pkg, p2, spec, count, true);
+  };
+  document.getElementById('overlay').classList.add('show');
+}
+
+function fwConfirmRun(pkg, plan, spec, count, ack){
+  const kindLabel = FW_KIND_LABEL[fwKind] || fwKind.toUpperCase();
+  document.getElementById('m-title').textContent =
+    `確認更新 ${kindLabel} 韌體 · ${count} 台`;
+  document.getElementById('m-desc').innerHTML =
+    `對 <b>${count} 台</b> Node 並行刷寫 <code>${esc(pkg)}</code>。<br>` +
+    (fwKind === 'bmc'
+      ? '刷寫完成後，需手動執行 BMC Reset 啟用新韌體。'
+      : fwKind === 'bios'
+        ? '刷寫完成後，需手動執行 Power Cycle 載入新 BIOS。'
+        : '刷寫完成後，需手動執行 Aux Cycle 載入新韌體。');
+  document.getElementById('m-scope').innerHTML =
+    `<span class="scope-k">目標</span> ` +
+    (fwAllMode ? '<b>全部 56 台</b>'
+      : `<b>${FW_SELECTED.size} 台</b>：` +
+        esc([...FW_SELECTED].join(', ')));
+  document.getElementById('m-cmd').textContent =
+    'POST https://{BMC}/redfish/v1/UpdateService/update-multipart';
+  const warn = document.getElementById('m-warn');
+  warn.style.display = 'block';
+  warn.textContent = (ack ? '⚠ 你已選擇在類型不符的情況下強制刷寫。\n' : '')
+    + '刷寫期間不要斷電。刷寫失敗的 BMC 可能無法遠端救援。'
+    + ' 刷寫完成不代表新版本已啟用，請依韌體類型手動執行啟用操作。';
+  document.getElementById('m-input-wrap').style.display = 'none';
+  document.getElementById('m-result').style.display = 'none';
+  document.getElementById('m-cancel').style.display = '';
+  pending = {
+    kind:'flash',
+    payload: {kind: fwKind, package: pkg, targets: spec,
+              ack_mismatch: !!ack},
+    token: plan.token,
+  };
+  const ok = document.getElementById('m-ok');
+  ok.className = 'danger';
+  ok.textContent = '確定執行';
+  ok.onclick = () => fwRunConfirmed(pending);
+  startGuard(ok);
+  document.getElementById('overlay').classList.add('show');
+}
+
+async function fwRunConfirmed(p){
+  const saved = p;
+  closeModal();
+  await fwStartJob(saved);
+}
+
+async function fwStartJob(p){
+  const r = await (await fetch('/api/flash/run?token=' + encodeURIComponent(p.token), {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(p.payload),
+  })).json();
+  if (!r.ok){
+    fwSetStatus('fw-run-status', '啟動失敗：' + r.error, 'bad');
+    toast('err', '刷寫失敗', r.error);
+    return;
+  }
+  fwJobs.set(r.job.id, r.job);
+  toast('ok', '已開始刷寫', `${r.job.nodes.length} 台`);
+  fwRenderJob(r.job);
+  const card = fwJobCard(r.job.id);
+  if (card) card.scrollIntoView({behavior:'smooth', block:'start'});
+  if (!fwPoll) fwPoll = setInterval(fwPollAll, 3000);
+}
+
+// ------------------------------------------------------------ job cards ---
+// Several flashes can be in flight (a 56-node rack gets done in batches), so
+// every job owns a card instead of sharing one. fwJobs holds the last state we
+// saw per job id; FW_DISMISSED remembers which cards the operator closed.
+const fwJobs = new Map();
+const fwRestarted = new Map();   // jobId -> Set(node) awaiting BMC to come back
+const fwLastProbe = new Map();   // jobId -> Map(node -> last version read ts)
+const fwRestartedAt = new Map(); // jobId -> Map(node -> restart requested ts)
+const FW_LAST_ACTION = new Map(); // jobId -> 'bmc_reset' | 'aux_cycle' | 'power_cycle'
+const FW_DISMISSED = new Set(
+  JSON.parse(localStorage.getItem('fwDismissed') || '[]'));
+
+function fwSaveDismissed(){
+  localStorage.setItem('fwDismissed', JSON.stringify([...FW_DISMISSED]));
+}
+
+function fwJobCard(jobId){
+  return document.querySelector(`.fw-job-card[data-job="${jobId}"]`);
+}
+
+function fwPollAll(){
+  if (!fwJobs.size) return;
+  for (const id of fwJobs.keys()){
+    if (FW_DISMISSED.has(id)) continue;
+    fwPollJob(id);
+  }
+}
+
+async function fwPollJob(jobId){
+  try {
+    const r = await (await fetch('/api/flash/job', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: jobId}),
+    })).json();
+    if (!r.ok) return;
+    fwJobs.set(jobId, r.job);
+    fwRenderJob(r.job);
+    fwCheckRestarted(jobId, r.job);
+  } catch (e){ /* keep polling */ }
+}
+
+// Poll after a restart. The completion signal differs by action:
+//   bmc_reset / aux_cycle -> the firmware version reads back
+//   power_cycle           -> the host OS answers ping, then the version is read
+// /api/flash/probe does both server-side so a row cannot claim success before
+// the machine is actually up. Power cycles take longer (POST + boot), so they
+// get a bigger budget.
+const FW_PROBE_INTERVAL = 20000;                 // 20 s between probes
+const FW_PROBE_TIMEOUT = {                       // per action, ms
+  bmc_reset: 600000, aux_cycle: 900000, power_cycle: 1800000,
+};
+// A restart needs time before the new image can be read back. Probing the
+// instant the action is issued always returns the OLD version, because the
+// BMC / CPLD is still running it - and that stale read then gets recorded as
+// the post-activation value. Hold off for a moment first.
+const FW_PROBE_DELAY = {                         // ms before the FIRST probe
+  bmc_reset: 10000, aux_cycle: 15000, power_cycle: 30000,
+};
+async function fwCheckRestarted(jobId, job){
+  const waiting = fwRestarted.get(jobId);
+  if (!waiting || !waiting.size) return;
+  const now = Date.now();
+  const last = fwLastProbe.get(jobId) || new Map();
+  fwLastProbe.set(jobId, last);
+  const action = FW_LAST_ACTION.get(jobId) || job.last_action || 'bmc_reset';
+  const firstDelay = FW_PROBE_DELAY[action] ?? FW_PROBE_DELAY.bmc_reset;
+
+  const due = [];
+  for (const name of waiting){
+    const t = last.get(name);
+    if (!t){
+      // Seed the timer so the first probe happens after the settle delay,
+      // not immediately.
+      last.set(name, now - FW_PROBE_INTERVAL + firstDelay);
+    }
+    if (now - (last.get(name) || 0) >= FW_PROBE_INTERVAL) due.push(name);
+  }
+  if (!due.length) return;
+
+  // Anchor the timeout on the server timestamp so reloading the page does not
+  // restart the clock.
+  const started = fwRestartedAt.get(jobId) || new Map();
+  fwRestartedAt.set(jobId, started);
+  due.forEach(n => {
+    if (!started.has(n)){
+      const row = job.nodes.find(x => x.node === n);
+      const ts = row && row.restarted_at ? row.restarted_at * 1000 : now;
+      started.set(n, ts);
+    }
+    last.set(n, now);
+  });
+
+  let rows = [];
+  try {
+    const r = await (await fetch('/api/flash/probe', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id: jobId, nodes: due}),
+    })).json();
+    if (r.ok) rows = r.nodes || [];
+  } catch (e){ /* transient; retried next interval */ }
+
+  // A readable version right after the restart is not proof the new image is
+  // live: for a while the BMC still answers with the OLD one. Only accept it
+  // once it differs from the pre-flash value, or once the wait has run out
+  // (in which case the reading is the best answer we have).
+  const budget = FW_PROBE_TIMEOUT[action] || FW_PROBE_TIMEOUT.bmc_reset;
+  const versions = {};
+  rows.forEach(r => {
+    if (!r.version) return;
+    if (action === 'power_cycle' && !r.os_up) return;
+    const row = job.nodes.find(x => x.node === r.node);
+    const before = row && row.version_before;
+    const expired = now - (started.get(r.node) || now) >= budget;
+    if (r.version !== before || expired) versions[r.node] = r.version;
+  });
+
+  const got = Object.keys(versions);
+  if (got.length){
+    let saved = null;
+    try {
+      const r = await (await fetch('/api/flash/activated', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({id: jobId, versions}),
+      })).json();
+      if (r.ok) saved = r.job;
+    } catch (e){ /* retried next interval */ }
+    if (saved){
+      got.forEach(n => { waiting.delete(n); last.delete(n); started.delete(n); });
+      fwJobs.set(jobId, saved);
+      fwRenderJob(saved);
+    }
+  }
+
+  for (const name of [...waiting]){
+    if (now - (started.get(name) || now) < budget) continue;
+    const cur = fwJobs.get(jobId);
+    const row = cur?.nodes.find(x => x.node === name);
+    if (!row || row.activated) continue;
+    row.restarted = false;
+    row.stuck = true;
+    row.detail = '無法取得韌體版本，請檢查節點狀態';
+    waiting.delete(name);
+    last.delete(name);
+    started.delete(name);
+    fwRenderJob(cur);
+  }
+}
+
+function fwRenderJob(job){
+  const id = job.id;
+  // A poll that started before the delete can still land here; without this the
+  // card would be recreated for a job the operator already discarded.
+  if (FW_DISMISSED.has(id)) return;
+  let card = fwJobCard(id);
+  if (!card){
+    card = el('div', 'add-card fw-job-card');
+    card.dataset.job = id;
+    card.innerHTML =
+      `<div class="add-head fw-job-head">
+         <div><h2>韌體更新進度 · ${esc(id)}</h2><p class="fw-job-sub">—</p></div>
+         <div class="fw-job-head-actions">
+           <button class="fw-job-close" type="button" aria-expanded="true">${uiIcon('chevron')}收合</button>
+           <button class="fw-job-remove" type="button" title="隱藏這張卡片（紀錄仍保留）" aria-label="隱藏這張卡片">✕</button>
+         </div>
+       </div>
+       <div class="fw-job-summary"></div>
+       <p class="fw-job-summary-note"></p>
+       <div class="fw-job-table-wrap"><table class="add-table">
+         <thead><tr><th>Node</th><th>狀態</th><th>版本 前 → 後</th><th>訊息</th></tr></thead>
+         <tbody></tbody>
+       </table></div>
+       <div class="fw-job-actions">
+         <span class="scope-k">韌體啟用操作</span>
+         <button class="mini btn-bmcreset" type="button" data-act="bmc_reset">${uiIcon('rotate')}BMC Reset</button>
+         <button class="mini btn-aux" type="button" data-act="aux_cycle">${uiIcon('zap')}Aux Cycle</button>
+         <button class="mini btn-pcycle" type="button" data-act="power_cycle">${uiIcon('plug')}Power Cycle</button>
+         <span class="add-status"></span>
+       </div>`;
+    card.querySelector('.fw-job-close').onclick = () => {
+      const collapsed = card.classList.toggle('collapsed');
+      const toggle = card.querySelector('.fw-job-close');
+      toggle.setAttribute('aria-expanded', String(!collapsed));
+      toggle.innerHTML = uiIcon('chevron') + (collapsed ? '展開' : '收合');
+      if (!collapsed) fwPollJob(id);
+    };
+    // Hiding a card is not deleting the job: the record stays in jobs.json and
+    // 查看 Job brings the card back. Use 刪除此 Job to actually discard it.
+    card.querySelector('.fw-job-remove').onclick = () => {
+      FW_DISMISSED.add(id);
+      fwSaveDismissed();
+      fwJobs.delete(id);
+      card.remove();
+    };
+    card.querySelectorAll('[data-act]').forEach(b => {
+      b.onclick = () => fwJobAction(id, b.dataset.act);
+    });
+    document.getElementById('fw-jobs').appendChild(card);
+  }
+  document.getElementById('fw-jobs').style.display = '';
+  const after = {cpld:'Aux Cycle', bmc:'BMC Reset', bios:'Power Cycle', bf4:'Aux Cycle'};
+  card.querySelector('.fw-job-sub').textContent =
+    `${job.kind.toUpperCase()} · ${job.package} · 開始 ${job.created}` +
+    ` · 刷寫完成後需手動執行 ${after[job.kind] || job.after_label}`;
+
+  const waiting = fwRestarted.get(id) || new Set();
+  const summary = fwJobSummary(job, waiting);
+  card.querySelector('.fw-job-summary').innerHTML =
+    Object.entries(summary).map(([label,count]) => `<span>${esc(label)}<b>${count}</b></span>`).join('');
+
+  // Power actions are only meaningful for nodes whose flash actually
+  // finished. Enabling them mid-flash invites a reset racing the write.
+  const okCount = job.nodes.filter(n => n.state === 'ok').length;
+  const busy = job.nodes.some(n => ['queued','reading','uploading','flashing']
+                                    .includes(n.state));
+  const gate = okCount === 0;
+  card.querySelector('.fw-job-summary-note').textContent = busy
+    ? '韌體更新進行中，各 Node 分別回報進度。'
+    : !job.nodes.length || job.nodes.some(n=>!['ok','failed','skipped'].includes(n.state)) ? '尚無法確認完整執行結果，請檢查各 Node 狀態。'
+    : summary['刷寫失敗'] ? '刷寫已結束；部分 Node 更新失敗，請檢查各 Node 的原始訊息。'
+    : job.nodes.some(n=>n.state==='skipped') ? '刷寫已結束，部分 Node 已略過；請檢查明細。'
+    : '刷寫已結束；啟用與版本驗證狀態請見各 Node 明細。';
+
+  const hint = card.querySelector('.fw-job-actions .scope-k');
+  if (hint) hint.innerHTML = uiIcon('wrench') + (busy && gate ? '刷寫進行中' : '韌體啟用操作');
+  card.querySelectorAll('[data-act]').forEach(b => {
+    const recommended = b.dataset.act === {cpld:'aux_cycle',bmc:'bmc_reset',bios:'power_cycle',bf4:'aux_cycle'}[job.kind];
+    b.classList.toggle('recommended', recommended);
+    b.disabled = gate;
+    b.title = gate
+      ? (busy ? '尚無刷寫完成的 Node，請等待刷寫結果。'
+              : '此 Job 沒有可執行啟用操作的 Node。')
+      : (recommended ? '此韌體類型的建議啟用操作；執行前將顯示實際目標。' : '其他手動操作；執行前將顯示實際目標。');
+  });
+
+  const tb = card.querySelector('tbody');
+  const openMessages = new Set([...tb.querySelectorAll('tr')]
+    .filter(row=>row.querySelector('details')?.open).map(row=>row.dataset.node));
+  const focusedMessage = tb.contains(document.activeElement)
+    ? document.activeElement.closest('tr')?.dataset.node : null;
+  tb.innerHTML = '';
+  job.nodes.forEach(n => {
+    const tr = el('tr');
+    tr.dataset.node = n.node;
+    tr.innerHTML =
+      `<td class="node-tag">${esc(n.node)}</td>` +
+      `<td><span class="fw-st ${fwNodeState(n, waiting.has(n.node)).tone}">${esc(fwNodeState(n, waiting.has(n.node)).label)}</span></td>` +
+      `<td class="fw-ver">${fwVersionCell(n, waiting.has(n.node))}</td>` +
+      `<td class="fw-msg">${n.detail ? `<details class="fw-detail"><summary>${uiIcon('info')}原始訊息</summary><p>${esc(n.detail)}</p></details>` : '無補充訊息'}</td>`;
+    tb.appendChild(tr);
+    const detail = tr.querySelector('details');
+    if (detail && openMessages.has(n.node)) detail.open = true;
+    if (detail && focusedMessage === n.node) detail.querySelector('summary').focus({preventScroll:true});
+  });
+}
+
+// Presentation only: flash outcome and activation/readback are separate facts.
+function fwNodeState(n, waiting=false){
+  if (n.state !== 'ok') return {
+    label:({queued:'等待執行',reading:'讀取版本中',uploading:'上傳韌體中',flashing:'韌體刷寫中',failed:'刷寫失敗',skipped:'已略過'})[n.state] || `未知狀態：${n.state || '未提供'}`,
+    tone:n.state === 'failed' ? 'failed' : 'neutral',
+  };
+  if (n.activated){
+    if (!n.version_before || !n.version_after) return {label:'尚未完成驗證',tone:'unverified'};
+    // Same before/after is normal when the package matches what the device
+    // already runs. Flash succeeded and the image is active either way.
+    if (n.version_before === n.version_after) return {label:'同版本重刷，已完成',tone:'ok'};
+    return {label:'版本變更已驗證',tone:'ok'};
+  }
+  if (n.stuck) return {label:'驗證逾時',tone:'stuck'};
+  if (waiting || n.restarted) return {label:'等待設備恢復',tone:'pending'};
+  // A flashed row that has not been restarted yet can still carry a
+  // version_after read straight after the write - that value is the OLD image,
+  // so the version must not be compared or trusted until activation.
+  return {label:'刷寫完成，待啟用',tone:'pending'};
+}
+function fwJobSummary(job, waiting){
+  const rows = [...new Map(job.nodes.map(n => [n.node,n])).values()];
+  return {'目標 Node':rows.length,'刷寫完成':rows.filter(n=>n.state==='ok').length,
+    '刷寫失敗':rows.filter(n=>n.state==='failed').length,
+    '待啟用':rows.filter(n=>n.state==='ok'&&!n.activated&&!n.restarted&&!n.stuck&&!waiting.has(n.node)).length,
+    '版本已驗證':rows.filter(n=>fwNodeState(n,waiting.has(n.node)).tone==='ok').length};
+}
+
+// Keep both raw readings visible; a post-write reading alone is not activation.
+function fwVersionCell(n, restarting){
+  const state = fwNodeState(n, restarting);
+  const before = n.version_before ? esc(n.version_before) : '未讀取到版本';
+  // Until activation there is no meaningful "after" - the old image is still
+  // running, so say that instead of showing a stale number.
+  const after = n.version_after ? esc(n.version_after)
+    : (n.activated ? '未讀取到版本' : '—（尚未啟用）');
+  const verification = n.activated ? state.label + (state.tone === 'ok' ? '；未比對套件預期版本' : '')
+    : n.state === 'ok' && !n.restarted && !restarting && !n.stuck ? '啟用：待啟用 · 驗證：未完成'
+    : n.stuck ? '驗證：逾時，尚無法確認新版本生效' : '驗證：尚未完成';
+  return `<span class="fw-version-line"><span class="fw-version-label">Before</span>${before}</span>`
+    + `<span class="fw-version-line"><span class="fw-version-label">After${n.activated ? '（啟用後）' : '（未驗證啟用）'}</span>${after}</span>`
+    + `<span class="fw-st ${state.tone}">${esc(verification)}</span>`;
+}
+
+function fwConfirmJobAction(job, action, targets){
+  const overlay = document.getElementById('overlay');
+  if (activeDialogOverlay()) return Promise.resolve(false);
+  const a = ACTIONS[action];
+  document.getElementById('m-title').textContent = `確認韌體啟用操作 · ${a.label}`;
+  document.getElementById('m-desc').textContent = `Job ${job.id} · ${job.kind.toUpperCase()} · ${targets.length} 個 Node。僅操作下列已完成刷寫的 Node。`;
+  document.getElementById('m-scope').textContent = targets.join(', ');
+  document.getElementById('m-cmd').textContent = `${a.desc} → ${a.via}`;
+  const warn = document.getElementById('m-warn');
+  warn.style.display = 'block';
+  warn.textContent = a.warn;
+  document.getElementById('m-input-wrap').style.display = 'none';
+  document.getElementById('m-result').style.display = 'none';
+  const ok = document.getElementById('m-ok');
+  ok.className = 'danger';
+  return new Promise(resolve => {
+    let confirmed = false;
+    const observer = new MutationObserver(() => {
+      if (overlay.classList.contains('show')) return;
+      observer.disconnect();
+      ok.onclick = null;
+      resolve(confirmed);
+    });
+    observer.observe(overlay,{attributes:true,attributeFilter:['class']});
+    ok.onclick = () => { if (!ok.disabled){ confirmed = true; closeModal(); } };
+    startGuard(ok);
+    overlay.classList.add('show');
+  });
+}
+
+// ------------------------------------------------------- restart / aux -----
+async function fwJobAction(jobId, action){
+  const job = fwJobs.get(jobId);
+  if (!job) return;
+  const card = fwJobCard(jobId);
+  const st = card.querySelector('.fw-job-actions .add-status');
+  const targets = job.nodes.filter(n => n.state === 'ok').map(n => n.node);
+  if (!targets.length){
+    toast('warn', '無法執行', '本次作業尚無成功完成的節點');
+    return;
+  }
+  const a = ACTIONS[action] || {};
+  if (!await fwConfirmJobAction(job, action, targets)) return;
+  st.textContent = '確認中…';
+  st.className = 'add-status';
+  const waiting = fwRestarted.get(jobId) || new Set();
+  fwRestarted.set(jobId, waiting);
+  FW_LAST_ACTION.set(jobId, action);
+  const done = [], failed = [];
+  for (const node of targets){
+    try {
+      const dry = await (await fetch('/api/node/power?dry_run=1', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({node, action}),
+      })).json();
+      if (!dry.token){ failed.push(`${node}: ${dry.error || 'no token'}`); continue; }
+      const out = await (await fetch('/api/node/power?token=' + encodeURIComponent(dry.token), {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({node, action}),
+      })).json();
+      if (out.ok === false && out.error) failed.push(`${node}: ${out.error}`);
+      else done.push(node);
+    } catch (e){ failed.push(`${node}: ${e}`); }
+    st.textContent = `指令已送出 ${done.length}/${targets.length}…`;
+  }
+  done.forEach(n => waiting.add(n));
+  if (done.length){
+    try {
+      const r = await (await fetch('/api/flash/restarted', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({id: jobId, nodes: done, action}),
+      })).json();
+      if (r.ok) fwJobs.set(jobId, r.job);
+    } catch (e){ /* the local flag still shows the right thing */ }
+  }
+  fwRenderJob(fwJobs.get(jobId) || job);
+  if (done.length) toast('ok', `${a.label || action} 已送出`, `${done.length} 台，等待裝置回應`);
+  failed.forEach(f => toast('err', `${a.label || action} 失敗`, f));
+  st.textContent = failed.length
+    ? `${done.length} 台成功 · ${failed.length} 台失敗`
+    : `${done.length} 台指令已送出，等待裝置回應`;
+  st.className = 'add-status ' + (failed.length ? 'bad' : 'ok');
+}
+
+async function fwResumeJob(){
+  try {
+    const r = await (await fetch('/api/flash/jobs', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:'{}',
+    })).json();
+    if (!r.ok || !Array.isArray(r.jobs)) return;
+    const live = r.jobs.filter(j => !j.dry_run && !FW_DISMISSED.has(j.id));
+    if (!live.length) return;
+    for (const j of live){
+      const d = await (await fetch('/api/flash/job', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({id: j.id}),
+      })).json();
+      if (!d.ok) continue;
+      fwJobs.set(j.id, d.job);
+      // Rows still marked restarted are mid-reboot from an earlier session;
+      // put them back in the watch set so activation keeps being checked.
+      const stuck = d.job.nodes.filter(n => n.restarted && !n.activated)
+                               .map(n => n.node);
+      if (stuck.length) fwRestarted.set(j.id, new Set(stuck));
+      fwRenderJob(d.job);
+    }
+    if (fwPoll) clearInterval(fwPoll);
+    fwPoll = setInterval(fwPollAll, 3000);
+    toast('info', '已接回進行中的刷寫', `${live.length} 筆`);
+  } catch (e){ /* never block the page on this */ }
+}
+
+document.querySelectorAll('.fw-kind-btn').forEach(b => {
+  b.onclick = () => { if (!b.disabled) fwChooseKind(b.dataset.kind); };
+});
+document.getElementById('fw-all').onchange = e => {
+  fwAllMode = e.target.checked;
+  if (fwAllMode) FW_SELECTED.clear();
+  fwSyncFromSelection();
+};
+document.getElementById('fw-file').onchange = e => {
+  fwUpload(e.target.files[0]);
+  e.target.value = '';
+};
+document.getElementById('fw-package').onchange = fwUpdateCount;
+document.getElementById('fw-del').onclick = async () => {
+  const name = document.getElementById('fw-package').value;
+  if (!name) return;
+  if (!confirm(`刪除 ${name}？（只刪檔案，不影響已刷的機器）`)) return;
+  const r = await (await fetch('/api/flash/delete', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name}),
+  })).json();
+  if (r.ok){ toast('ok', '已刪除', name); fwLoadPackages(); }
+  else toast('err', '刪除失敗', r.error);
+};
+document.getElementById('fw-preview').onclick = fwPreview;
+document.getElementById('fw-run').onclick = fwRun;
+
+async function fwJobDelete(id, skipConfirm){
+  // A job listed in 作業紀錄 need not have a card on screen (it may have been
+  // hidden with ✕, or belong to an earlier session), so fwJobs is not a
+  // reliable source. Fall back to the server before giving up on the delete.
+  let job = fwJobs.get(id);
+  if (!job){
+    try {
+      const d = await (await fetch('/api/flash/job', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({id}),
+      })).json();
+      if (!d.ok || !d.job){
+        toast('err', '無法刪除', '找不到這筆作業紀錄（可能已被刪除）');
+        return false;
+      }
+      job = d.job;
+    } catch (e){
+      toast('err', '無法刪除', String(e));
+      return false;
+    }
+  }
+  const running = job.nodes.some(n =>
+    ['queued','reading','uploading','flashing'].includes(n.state));
+  if (running){
+    toast('warn', '無法刪除', '此作業仍在刷寫中，請等待結束');
+    return false;
+  }
+  if (!skipConfirm &&
+      !confirm(`刪除作業紀錄 ${id}？\n\n只移除紀錄，不影響機器上的韌體。`)) return false;
+  try {
+    const r = await (await fetch('/api/flash/job/delete', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id}),
+    })).json();
+    if (!r.ok){ toast('err', '刪除失敗', r.error); return false; }
+    fwJobs.delete(id);
+    fwRestarted.delete(id);
+    fwLastProbe.delete(id);
+    fwRestartedAt.delete(id);
+    FW_LAST_ACTION.delete(id);
+    FW_DISMISSED.add(id);
+    fwSaveDismissed();
+    const card = fwJobCard(id);
+    if (card) card.remove();
+    toast('ok', '已刪除作業紀錄', id);
+    return true;
+  } catch(e){ toast('err', '刪除失敗', String(e)); return false; }
+}
+
+async function fwHistoryRefresh(){
+  const status = document.getElementById('fw-history-status');
+  try {
+    const r = await (await fetch('/api/flash/jobs', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:'{}',
+    })).json();
+    if (!r.ok) throw new Error(r.error || '無法讀取');
+    const list = document.getElementById('fw-history-list');
+    const keep = list.value;
+    const jobs = (r.jobs || []).filter(j => !j.dry_run);
+    list.innerHTML = '<option value="">請選擇 Job</option>' +
+      jobs.map(j =>
+        `<option value="${esc(j.id)}">${esc(j.id)} · ${esc(j.kind.toUpperCase())} · ${esc(j.package)} · ${esc(j.created)}${j.done ? '' : ' · 進行中'}</option>`
+      ).join('');
+    // Restore the selection only when that job still exists; otherwise fall
+    // back to the placeholder so the next 刪除 cannot aim at a gone job.
+    list.value = jobs.some(j => j.id === keep) ? keep : '';
+    status.textContent = jobs.length ? '' : '目前沒有作業紀錄。';
+    return jobs;
+  } catch(e){
+    status.textContent = `無法讀取作業紀錄：${e.message || e}`;
+    return null;
+  }
+}
+
+document.getElementById('fw-history-delete').onclick = async () => {
+  const id = document.getElementById('fw-history-list').value;
+  const status = document.getElementById('fw-history-status');
+  if (!id){ status.textContent = '請先選擇要刪除的 Job。'; return; }
+  status.textContent = '正在刪除…';
+  const ok = await fwJobDelete(id);
+  await fwHistoryRefresh();
+  if (ok) status.textContent = `已刪除 ${id}。`;
+};
+
+document.getElementById('fw-history-toggle').onclick = async () => {
+  const status = document.getElementById('fw-history-status');
+  status.textContent = '正在讀取作業紀錄…';
+  const jobs = await fwHistoryRefresh();
+  if (jobs) status.textContent = jobs.length ? '' : '目前沒有作業紀錄。';
+};
+document.getElementById('fw-history-open').onclick = async () => {
+  const id = document.getElementById('fw-history-list').value;
+  if (!id) return;
+  FW_DISMISSED.delete(id);
+  fwSaveDismissed();
+  await fwResumeJob();
+  const card = fwJobCard(id);
+  if (card){
+    if (card.classList.contains('collapsed')) card.querySelector('.fw-job-close').click();
+    card.scrollIntoView({block:'start',behavior:'auto'});
+  }
+};
+
+fwLoadPackages();
+fwBuildTargets();
+fwChooseKind('cpld');
+fwResumeJob();
+
+/* ---------- add tray ---------- */
+const NODE_COUNT = 4;
+let probed = null;   // last successful probe, required before saving
+
+function buildAddRows(){
+  const tb = document.getElementById('add-rows');
+  tb.innerHTML = '';
+  for (let i = 0; i < NODE_COUNT; i++){
+    const tr = el('tr');
+    tr.innerHTML = `
+      <td class="node-tag">n${i}</td>
+      <td><input data-f="os_ip" placeholder="10.36.72.x"></td>
+      <td><input data-f="bmc_ip" placeholder="10.36.72.x"></td>
+      <td><input data-f="os_user" placeholder="(預設)"></td>
+      <td><span class="pw-wrap"><input data-f="os_pass" type="password" placeholder="(預設)"><button class="pw-eye" type="button" title="顯示密碼" aria-label="顯示密碼"><span class="sr-only">顯示密碼</span></button></span></td>
+      <td><input data-f="bmc_user" placeholder="(預設)"></td>
+      <td><span class="pw-wrap"><input data-f="bmc_pass" type="password" placeholder="(預設)"><button class="pw-eye" type="button" title="顯示密碼" aria-label="顯示密碼"><span class="sr-only">顯示密碼</span></button></span></td>
+      <td class="probe-cell"><span class="probe-wait">—</span></td>`;
+    tb.appendChild(tr);
+  }
+}
+
+function readAddRows(){
+  const rows = [...document.querySelectorAll('#add-rows tr')];
+  const defaults = {
+    os_user: document.getElementById('def-os-user').value,
+    os_pass: document.getElementById('def-os-pass').value,
+    bmc_user: document.getElementById('def-bmc-user').value,
+    bmc_pass: document.getElementById('def-bmc-pass').value,
+  };
+  const out = [];
+  rows.forEach(tr => {
+    const get = f => tr.querySelector(`input[data-f="${f}"]`).value.trim();
+    const osIp = get('os_ip'), bmcIp = get('bmc_ip');
+    if (!osIp && !bmcIp) return;          // skip blank rows
+    out.push({
+      os_ip: osIp, bmc_ip: bmcIp,
+      os_user: get('os_user') || defaults.os_user,
+      os_pass: get('os_pass') || defaults.os_pass,
+      bmc_user: get('bmc_user') || defaults.bmc_user,
+      bmc_pass: get('bmc_pass') || defaults.bmc_pass,
+    });
+  });
+  return out;
+}
+
+function setAddStatus(msg, kind){
+  const s = document.getElementById('add-status');
+  s.textContent = msg;
+  s.className = 'add-status' + (kind ? ' ' + kind : '');
+}
+
+function trayBody(){
+  const t = document.getElementById('add-tray').value.trim();
+  const name = document.getElementById('add-name').value.trim();
+  const body = {nodes: readAddRows()};
+  if (t !== '') body.tray = parseInt(t, 10);
+  if (name) body.name = name;
+  return body;
+}
+
+async function probeTray(){
+  const body = trayBody();
+  if (!body.nodes.length) return setAddStatus('請至少填一組 OS／BMC IP', 'bad');
+  const btn = document.getElementById('add-probe');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> SSH 探測中';
+  setAddStatus('正在登入各 OS 讀取 hostname…');
+  document.querySelectorAll('#add-rows .probe-cell')
+    .forEach(c => c.innerHTML = '<span class="probe-wait">連線中…</span>');
+  try {
+    const r = await (await fetch('/api/tray/probe', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    })).json();
+    if (!r.ok){
+      setAddStatus('探測失敗：' + r.error, 'bad');
+      toast('err', '探測失敗', r.error);
+      return;
+    }
+    const cells = [...document.querySelectorAll('#add-rows .probe-cell')];
+    // Blank rows are skipped by readAddRows, so their cells must stay blank
+    // rather than showing a stale "connecting" placeholder.
+    cells.forEach(c => { if (!c.textContent || c.textContent.includes('連線中')) c.innerHTML = '<span class="probe-wait">—</span>'; });
+    let okCount = 0;
+    r.nodes.forEach((n, i) => {
+      const good = !!n.os_hostname;
+      if (good) okCount++;
+      const host = good ? esc(n.os_hostname)
+        : `<span class="probe-bad">${esc(n.os_detail)}</span>`;
+      const bmc = n.bmc_power
+        ? `<span class="probe-ok">${esc(n.bmc_power)}</span>`
+        : `<span class="probe-bad">${esc(n.bmc_detail)}</span>`;
+      if (cells[i]) cells[i].innerHTML = `${host}<br>BMC ${bmc}`;
+    });
+    // Only allow writing when every filled row answered over SSH; anything less
+    // would store a hostname nobody verified.
+    const save = document.getElementById('add-save');
+    save.disabled = okCount !== r.nodes.length;
+    probed = body;
+    setAddStatus(`${okCount}/${r.nodes.length} 台取得 hostname` +
+      (save.disabled ? '（需全部成功才能寫入）' : '，可以寫入'), save.disabled ? 'bad' : 'ok');
+    toast(save.disabled ? 'warn' : 'ok',
+      save.disabled ? `僅 ${okCount}/${r.nodes.length} 台回應` : '探測完成',
+      save.disabled ? '有節點未回 hostname，未允許寫入' : '已取得全部 hostname');
+  } catch (e){
+    setAddStatus('探測失敗：' + e, 'bad');
+    toast('err', '探測失敗', String(e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'SSH 探測';
+  }
+}
+
+async function saveTray(){
+  if (!probed) return;
+  const body = {...probed};
+  if (document.getElementById('add-tray').value.trim() !== '')
+    body.tray = parseInt(document.getElementById('add-tray').value, 10);
+  if (document.getElementById('add-name').value.trim())
+    body.name = document.getElementById('add-name').value.trim();
+  const btn = document.getElementById('add-save');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> 寫入中';
+  try {
+    let r = await (await fetch('/api/tray/add', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    })).json();
+    if (!r.ok && /already exists/.test(r.error || '')){
+      if (confirm(`${r.error}\n\n要覆蓋這個 tray 嗎？`)){
+        r = await (await fetch('/api/tray/add', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({...body, force: 1}),
+        })).json();
+      } else {
+        setAddStatus('已取消寫入', '');
+        btn.disabled = false; btn.textContent = '寫入清單';
+        return;
+      }
+    }
+    if (!r.ok){
+      setAddStatus('寫入失敗：' + r.error, 'bad');
+      toast('err', '寫入失敗', r.error);
+      return;
+    }
+    toast('ok', `已新增 ${r.name}`, `${r.nodes.length} 個節點寫入 inventory.json`);
+    setAddStatus(`已寫入 ${r.name}`, 'ok');
+    loadInventoryList();
+    setTimeout(refresh, 400);
+  } catch (e){
+    setAddStatus('寫入失敗：' + e, 'bad');
+    toast('err', '寫入失敗', String(e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '寫入清單';
+  }
+}
+
+async function loadInventoryList(){
+  const tb = document.getElementById('list-rows');
+  try {
+    const d = await (await fetch('/api/inventory')).json();
+    const trays = d.detail || [];
+    tb.innerHTML = '';
+    trays.forEach(t => {
+      const tr = el('tr');
+      const ips = t.nodes.map(n => n.os_ip);
+      tr.innerHTML = `
+        <td>${t.tray}</td>
+        <td><b>${esc(t.name)}</b></td>
+        <td>${t.nodes.length}</td>
+        <td style="font-family:ui-monospace,Menlo,monospace;font-size:11px">
+          ${esc(ips[0] || '')}${ips.length > 1 ? ' … ' + esc(ips[ips.length-1]) : ''}</td>
+        <td><button class="icon-del" data-tray="${t.tray}" title="移除" aria-label="移除 ${esc(t.name || t.tray)}"><span class="sr-only">移除</span></button></td>`;
+      tb.appendChild(tr);
+    });
+    tb.querySelectorAll('.icon-del').forEach(b => {
+      b.onclick = async () => {
+        const tray = parseInt(b.dataset.tray, 10);
+        if (!confirm(`確定從清單移除 tray ${tray}？（只移除清單，不會動到機器）`)) return;
+        const r = await (await fetch('/api/tray/remove', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({tray}),
+        })).json();
+        if (r.ok){ toast('ok', `已移除 tray ${tray}`, '僅更新清單'); loadInventoryList(); refresh(); }
+        else toast('err', '移除失敗', r.error);
+      };
+    });
+  } catch (e){
+    tb.innerHTML = `<tr><td colspan="5" class="probe-bad">讀取失敗：${esc(String(e))}</td></tr>`;
+  }
+}
+
+// Delegated so dynamically built table rows get the toggle for free.
+document.addEventListener('click', e => {
+  const eye = e.target.closest('.pw-eye');
+  if (!eye) return;
+  const input = eye.parentElement.querySelector('input');
+  if (!input) return;
+  const reveal = input.type === 'password';
+  input.type = reveal ? 'text' : 'password';
+  eye.classList.toggle('on', reveal);
+  eye.title = reveal ? '隱藏密碼' : '顯示密碼';
+  eye.setAttribute('aria-label', eye.title);
+  const assistiveLabel = eye.querySelector('.sr-only');
+  if (assistiveLabel) assistiveLabel.textContent = eye.title;
+});
+
+document.getElementById('add-probe').onclick = probeTray;
+document.getElementById('add-save').onclick = saveTray;
+document.getElementById('add-reset').onclick = () => {
+  buildAddRows();
+  document.getElementById('add-tray').value = '';
+  document.getElementById('add-name').value = '';
+  document.getElementById('add-save').disabled = true;
+  probed = null;
+  setAddStatus('');
+};
+buildAddRows();
+loadInventoryList();
+
+/* ---------- action flow ----------
+   Every power button opens this modal first. Nothing is sent until the operator
+   presses the confirm button, and the confirm button stays inert for a short
+   countdown so a double-click or a stray Enter cannot fire a cycle. */
+const GUARD_MS = 1500;
+let guardTimer = null;
+
+function confirmAction({kind, node, tray, action, title, desc, need}){
+  const a = ACTIONS[action];
+  pending = {kind, node, tray, action};
+  document.getElementById('m-title').textContent = title;
+  document.getElementById('m-desc').innerHTML = desc;
+  const warn = document.getElementById('m-warn');
+  warn.style.display = 'block';
+  warn.innerHTML = a.warn;
+  const wrap = document.getElementById('m-input-wrap');
+  const input = document.getElementById('m-input');
+  if (need){
+    wrap.style.display = 'block';
+    input.value = '';
+    input.placeholder = `輸入 ${need} 以確認`;
+    warn.innerHTML += `<br><br>請輸入 <code>${esc(need)}</code> 才能繼續。`;
+  } else {
+    wrap.style.display = 'none';
+  }
+  document.getElementById('m-result').style.display = 'none';
+
+  document.getElementById('m-scope').innerHTML =
+    `<span class="scope-k">目標</span> <b>${esc(title.split(' · ')[0])}</b>
+     <span class="scope-k">動作</span> <b class="scope-act">${esc(a.label)}</b>`;
+  document.getElementById('m-cmd').textContent = `${a.desc} → ${a.via}`;
+
+  const ok = document.getElementById('m-ok');
+  ok.className = (a.sev === 'soft' ? 'primary' : 'danger');
+  ok.onclick = () => runAction(need, input);
+  startGuard(ok);
+  document.getElementById('overlay').classList.add('show');
+  if (need) setTimeout(() => input.focus(), 60);
+}
+
+/* Disable the confirm button for GUARD_MS so a reflexive second click is safe. */
+function startGuard(ok){
+  clearInterval(guardTimer);
+  let left = Math.round(GUARD_MS / 1000);
+  ok.disabled = true;
+  ok.textContent = `請確認… ${left}`;
+  guardTimer = setInterval(() => {
+    left -= 1;
+    if (left > 0){ ok.textContent = `請確認… ${left}`; return; }
+    clearInterval(guardTimer);
+    ok.disabled = false;
+    ok.textContent = '確定執行';
+  }, 1000);
+}
+
+async function runAction(need, input){
+  const ok = document.getElementById('m-ok');
+  if (need && input.value.trim() !== need){
+    toast('warn', '確認字串不符', `需要輸入「${need}」，未送出任何指令`);
+    input.focus();
+    input.select();
+    return;
+  }
+  ok.disabled = true;
+  ok.innerHTML = '<span class="spin"></span> 執行中';
+  const job = {...pending};
+  const path = job.kind === 'node' ? '/api/node/power'
+             : job.kind === 'tray' ? '/api/tray/power'
+             : '/api/shelf/power';
+  const payload = {action: job.action};
+  if (job.kind === 'node') payload.node = job.node;
+  if (job.kind === 'tray') payload.tray = job.tray;
+  if (job.kind === 'shelf') payload.shelf = job.shelf;
+
+  const what = job.kind === 'node' ? job.node
+             : job.kind === 'tray' ? `Neutrino${job.tray}（4 台）`
+             : `Powershelf-${job.shelf}`;
+
+  try {
+    const dry = await (await fetch(path + '?dry_run=1', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    })).json();
+    const out = await (await fetch(path + '?token=' + encodeURIComponent(dry.token), {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload),
+    })).json();
+    closeModal();
+    reportResult(out, job, what);
+    toast('info', '狀態將於數秒後重新整理', null, 3000);
+    setTimeout(refresh, 2500);
+    return;
+  } catch (e) {
+    closeModal();
+    toast('err', '請求失敗', `${what}：${e}`);
+  }
+}
+
+/* Turn a power API response into one toast per outcome. A tray action returns
+   four node results, so a partial failure is called out rather than hidden. */
+function reportResult(out, job, what){
+  if (!out || (out.ok === false && out.error)){
+    toast('err', '未執行', out?.error || '服務未回應');
+    return;
+  }
+  const a = ACTIONS[job.action] || {};
+  const label = a.label || job.action;
+
+  if (Array.isArray(out.results)){
+    const okN = out.results.filter(r => r.ok).length;
+    const bad = out.results.filter(r => !r.ok);
+    if (bad.length === 0){
+      toast('ok', `Tray ${job.tray} · ${label} 已送出`,
+            `${okN}/4 台成功`);
+    } else {
+      toast('warn', `Tray ${job.tray} · ${label} 部分失敗`,
+            `${okN}/4 成功，${bad.length} 台失敗`);
+      bad.forEach(r => toast('err', `${r.node} 失敗`,
+            `${r.command} → exit ${r.exit_code}: ${(r.output || '無輸出').slice(0, 160)}`));
+    }
+    return;
+  }
+
+  if (out.command){
+    const detail = `${out.via} · ${out.command} · exit ${out.exit_code}`;
+    if (out.ok) toast('ok', `${what} · ${label} 已送出`, detail);
+    else toast('err', `${what} · ${label} 失敗`,
+               `${detail}\n${(out.output || '無輸出').slice(0, 200)}`);
+    return;
+  }
+
+  if (out.action === 'on' || out.action === 'off'){
+    const up = out.action.toUpperCase();
+    if (out.ok) toast('ok', `${what} Power ${up} 已送出`, out.ip);
+    else toast('err', `${what} Power ${up} 失敗`,
+               `HTTP ${out.http} · ${(out.response || '').slice(0, 160)}`);
+    return;
+  }
+
+  toast('info', '已完成', JSON.stringify(out).slice(0, 180));
+}
+
+function shelfConfirm(s, action){
+  pending = {kind:'shelf', shelf:s.shelf, action};
+  document.getElementById('m-title').textContent =
+    `Powershelf-${s.shelf} · Power ${action.toUpperCase()}`;
+  document.getElementById('m-desc').innerHTML =
+    `對 <b>Powershelf-${s.shelf}</b>（${esc(s.ip)}）執行 <b>Power ${action.toUpperCase()}</b>。`;
+  const warn = document.getElementById('m-warn');
+  warn.style.display = 'block';
+  warn.innerHTML = action === 'off'
+    ? 'Power OFF 會切斷此 shelf 的 PSU 輸出，該區機台全部斷電。BMC 由 standby 電源供電，仍可透過 Redfish 遠端 Power On 喚回。'
+    : '恢復供電：機台會上電，但不會自動開機到 OS。';
+  const wrap = document.getElementById('m-input-wrap');
+  const input = document.getElementById('m-input');
+  const need = action === 'off' ? 'Neutrino' : null;
+  if (need){
+    wrap.style.display = 'block';
+    input.value = '';
+    input.placeholder = '輸入 Neutrino 以確認';
+    warn.innerHTML += '<br><br>請輸入 <code>Neutrino</code> 才能繼續。';
+  } else {
+    wrap.style.display = 'none';
+  }
+  document.getElementById('m-result').style.display = 'none';
+  document.getElementById('m-scope').innerHTML =
+    `<span class="scope-k">目標</span> <b>Powershelf-${s.shelf}</b> <span class="scope-k">${esc(s.ip)}</span>
+     <span class="scope-k">動作</span> <b class="scope-act">Power ${action.toUpperCase()}</b>`;
+  document.getElementById('m-cmd').textContent =
+    `POST /redfish/v1/.../PowerUnits/Actions/LiteOn.Power${action === 'off' ? 'Off' : 'On'}`;
+  const ok = document.getElementById('m-ok');
+  ok.className = 'danger';
+  ok.onclick = () => runAction(need, input);
+  startGuard(ok);
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeModal(){
+  clearInterval(guardTimer);
+  document.getElementById('overlay').classList.remove('show');
+  pending = null;
+}
+document.getElementById('m-cancel').onclick = closeModal;
+document.getElementById('overlay').onclick = e => {
+  if (e.target.id === 'overlay') closeModal();
+};
+/* ---------- HW/FW inventory ---------- */
+let hwNode = null;
+
+function closeHw(){
+  document.getElementById('hw-overlay').classList.remove('show');
+}
+
+async function openHw(node, btn){
+  hwNode = node;
+  document.getElementById('hw-title').textContent = `${node} · HW / FW`;
+  document.getElementById('hw-sub').textContent = '';
+  document.getElementById('hw-body').innerHTML =
+    '<div class="hw-empty"><span class="hw-live"><span class="sp"></span>'
+    + '正在讀取 HW / FW 資訊… 約需 10–30 秒</span></div>';
+  document.getElementById('hw-overlay').classList.add('show');
+  if (btn) btn.classList.add('busy');
+  try {
+    await hwLoad(node);
+  } finally {
+    if (btn) btn.classList.remove('busy');
+  }
+}
+
+async function hwLoad(node){
+  const body = document.getElementById('hw-body');
+  try {
+    const r = await fetch('/api/node/hw', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({node}),
+    });
+    const d = await r.json();
+    hwRender(d);
+  } catch (e){
+    body.innerHTML = `<div class="hw-err">讀取失敗：${esc(e.message || e)}</div>`;
+  }
+}
+
+function hwRender(d){
+  const body = document.getElementById('hw-body');
+  if (!d || !d.ok){
+    const err = (d && d.error) || '未知錯誤';
+    const where = d && d.os_ip ? `（OS ${esc(d.os_ip)}）` : '';
+    let html = `<div class="hw-err"><b>讀不到 ${esc(d.node)} 的硬體資訊${where}</b>
+      <br>${esc(err)}</div>`;
+    const fw = (d && d.firmware) || [];
+    if (fw.length){
+      html += '<div class="hw-sec"><div class="hw-sec-t">韌體版本 · Firmware Versions（來自 BMC · OOB）</div>'
+            + '<table class="hw-fw"><thead><tr><th>元件 · Component</th>'
+            + '<th>版本 · Version</th></tr></thead><tbody>';
+      for (const r of fw){
+        html += `<tr><td>${esc(r.component)}</td><td>${esc(r.version)}</td></tr>`;
+      }
+      html += '</tbody></table></div>';
+    }
+    body.innerHTML = html;
+    return;
+  }
+
+  document.getElementById('hw-sub').textContent =
+    `OS ${d.os_ip || '—'}   ·   BMC ${d.bmc_ip || '—'}   ·   ` +
+    (d.fw_source === 'bmc'
+      ? '硬體 Config-Neutrino.sh  ·  韌體 BMC Redfish (OOB)'
+      : '來源 /root/Config-Neutrino.sh');
+
+  let html = '';
+
+  // --- hardware ---
+  const comps = d.components || {};
+  const order = ['CPU','DIMM','NVMe','NIC','PCIeFAB','USB','BMC'];
+  const keys = order.filter(k => comps[k])
+    .concat(Object.keys(comps).filter(k => !order.includes(k)));
+  if (keys.length){
+    html += '<div class="hw-sec"><div class="hw-sec-t">硬體元件 · Hardware Components</div>'
+          + '<div class="hw-grid">'
+          + '<span class="hw-grid-head">類型</span>'
+          + '<span class="hw-grid-head">元件 · Component</span>'
+          + '<span class="hw-grid-head" style="text-align:right">數量</span>';
+    for (const k of keys){
+      for (const it of comps[k]){
+        html += `<span>${esc(k)}</span>`
+              + `<span>${esc(it.label)}</span>`
+              + `<span>x${it.qty}</span>`;
+      }
+    }
+    html += '</div></div>';
+  }
+
+  // --- firmware ---
+  const fw = d.firmware || [];
+  if (fw.length){
+    html += '<div class="hw-sec"><div class="hw-sec-t">韌體版本 · Firmware Versions</div>'
+          + (d.fw_note ? `<div class="hw-note">${esc(d.fw_note)}</div>` : '')
+          + '<table class="hw-fw"><thead><tr><th>元件 · Component</th>'
+          + '<th>版本 · Version</th></tr></thead><tbody>';
+    for (const r of fw){
+      html += `<tr><td>${esc(r.component)}</td><td>${esc(r.version)}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+  } else {
+    html += '<div class="hw-sec"><div class="hw-sec-t">韌體版本 · Firmware Versions</div>'
+          + `<div class="hw-note">${esc(d.fw_note || '腳本沒有輸出韌體表格')}</div></div>`;
+  }
+
+  if (!html){
+    html = '<div class="hw-empty">沒有解析到任何硬體或韌體資訊。</div>';
+  }
+
+  body.innerHTML = html;
+}
+
+document.getElementById('hw-close').onclick = closeHw;
+document.getElementById('hw-done').onclick = closeHw;
+document.getElementById('hw-refresh').onclick = () => {
+  if (!hwNode) return;
+  const refreshBtn = document.getElementById('hw-refresh');
+  refreshBtn.disabled = true;
+  refreshBtn.innerHTML = '<span class="spin"></span> 重新讀取中';
+  document.getElementById('hw-body').innerHTML =
+    '<div class="hw-empty"><span class="hw-live"><span class="sp"></span>'
+    + '重新讀取硬體與韌體資訊…</span></div>';
+  hwLoad(hwNode).finally(() => {
+    refreshBtn.disabled = false;
+    refreshBtn.innerHTML = uiIcon('refresh') + '重新讀取';
+  });
+};
+document.getElementById('hw-overlay').onclick = e => {
+  if (e.target.id === 'hw-overlay') closeHw();
+};
+/* Dialog accessibility is presentation-only: it observes the existing overlays
+   without changing any power, shelf, firmware, guard, or confirmation logic. */
+const APP_SHELL = document.querySelector('.layout');
+const TOAST_REGION = document.getElementById('toasts');
+const DIALOG_OVERLAYS = [
+  document.getElementById('overlay'),
+  document.getElementById('hw-overlay'),
+];
+const DIALOG_RETURN_FOCUS = new WeakMap();
+
+function activeDialogOverlay(){
+  return [...DIALOG_OVERLAYS].reverse().find(node => node.classList.contains('show')) || null;
+}
+
+function dialogFocusable(overlay){
+  return [...overlay.querySelectorAll(
+    'button:not(:disabled), input:not(:disabled), select:not(:disabled), '
+    + 'textarea:not(:disabled), a[href], [tabindex]:not([tabindex="-1"])'
+  )].filter(node => node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden');
+}
+
+function dialogReturnTarget(saved){
+  if (saved?.element?.isConnected) return saved.element;
+  if (!saved?.focusKey) return null;
+  return [...document.querySelectorAll('[data-focus-key]')]
+    .find(node => node.dataset.focusKey === saved.focusKey) || null;
+}
+
+function syncDialogState(overlay){
+  const open = overlay.classList.contains('show');
+  if (open){
+    const current = document.activeElement;
+    if (current && current !== document.body && !overlay.contains(current)){
+      DIALOG_RETURN_FOCUS.set(overlay, {
+        element:current,
+        focusKey:current.dataset?.focusKey || null,
+      });
+    }
+    APP_SHELL.inert = true;
+    TOAST_REGION.inert = true;
+    requestAnimationFrame(() => {
+      if (!overlay.classList.contains('show')) return;
+      const confirmInput = overlay.id === 'overlay'
+        && getComputedStyle(document.getElementById('m-input-wrap')).display !== 'none'
+        ? document.getElementById('m-input') : null;
+      (confirmInput || dialogFocusable(overlay)[0])?.focus();
+    });
+    return;
+  }
+  const returnTo = dialogReturnTarget(DIALOG_RETURN_FOCUS.get(overlay));
+  const nextOverlay = activeDialogOverlay();
+  if (nextOverlay){
+    const target = returnTo?.isConnected && nextOverlay.contains(returnTo)
+      ? returnTo : dialogFocusable(nextOverlay)[0];
+    target?.focus();
+    DIALOG_RETURN_FOCUS.delete(overlay);
+    return;
+  }
+  APP_SHELL.inert = false;
+  TOAST_REGION.inert = false;
+  if (returnTo?.isConnected) returnTo.focus();
+  DIALOG_RETURN_FOCUS.delete(overlay);
+}
+
+DIALOG_OVERLAYS.forEach(overlay => {
+  new MutationObserver(() => syncDialogState(overlay))
+    .observe(overlay, {attributes:true, attributeFilter:['class']});
+});
+
+document.addEventListener('keydown', e => {
+  const overlay = activeDialogOverlay();
+  if (!overlay) return;
+  if (e.key === 'Escape'){
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    overlay.id === 'hw-overlay' ? closeHw() : closeModal();
+    return;
+  }
+  if (e.key !== 'Tab') return;
+  const items = dialogFocusable(overlay);
+  if (!items.length){ e.preventDefault(); return; }
+  const first = items[0];
+  const last = items[items.length - 1];
+  if (!overlay.contains(document.activeElement)){
+    e.preventDefault();
+    (e.shiftKey ? last : first).focus();
+  } else if (e.shiftKey && document.activeElement === first){
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last){
+    e.preventDefault();
+    first.focus();
+  }
+}, true);
+
+/* ---------- refresh ---------- */
+// Decorate existing controls without replacing their IDs or handlers.
+for (const [id,name] of Object.entries({'fw-del':'trash','fw-preview':'scan','fw-run':'cpu','hw-refresh':'refresh','fw-history-toggle':'history','fw-history-open':'history'})){
+  const control = document.getElementById(id);
+  control.insertAdjacentHTML('afterbegin',uiIcon(name));
+}
+const uploadControl = document.querySelector('.btn-upload');
+uploadControl.insertAdjacentHTML('afterbegin',uiIcon('upload'));
+uploadControl.addEventListener('keydown',e=>{
+  if (e.key === 'Enter' || e.key === ' '){e.preventDefault();document.getElementById('fw-file').click();}
+});
+async function refresh(){
+  const btn = document.getElementById('btn-refresh');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> 更新中';
+  btn.setAttribute('aria-label','正在更新 Rack 狀態…');
+  if (!STATUS) RACK_ROOT.innerHTML = '<div class="rack-notice">正在更新 Rack 狀態…</div>';
+  const started = Date.now();
+  const tick = setInterval(() => {
+    btn.innerHTML = `<span class="spin"></span> 更新中 ${Math.round((Date.now()-started)/1000)}s`;
+  }, 1000);
+  try {
+    const r = await fetch('/api/status');
+    render(await r.json());
+  } catch (e) {
+    console.error(e);
+    toast('err','無法更新 Rack 狀態',String(e));
+    if (!STATUS) RACK_ROOT.innerHTML = '<div class="rack-notice">無法讀取 Rack 狀態，請使用「更新狀態」重試。</div>';
+  } finally {
+    clearInterval(tick);
+    btn.disabled = false;
+    btn.innerHTML = uiIcon('refresh') + '更新狀態';
+    btn.setAttribute('aria-label','更新狀態');
+  }
+}
+document.getElementById('btn-refresh').onclick = refresh;
+
+
+const hostBtn = document.getElementById('btn-hostname');
+hostBtn.onclick = async () => {
+  hostBtn.disabled = true;
+  const label = hostBtn.textContent;
+  hostBtn.innerHTML = '<span class="spin"></span> 讀取中';
+  try {
+    const r = await (await fetch('/api/hostnames/refresh', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: '{}',
+    })).json();
+    if (!r.ok){
+      toast('err', '刷新 hostname 失敗', r.error || '未知錯誤');
+      return;
+    }
+    toast(r.updated ? 'ok' : 'warn',
+      `hostname ${r.updated}/${r.total}`,
+      r.updated === r.total ? '全部節點已更新'
+                            : `${r.total - r.updated} 台未回應，保留原值`);
+    await refresh();
+  } catch (e){
+    toast('err', '刷新 hostname 失敗', String(e));
+  } finally {
+    hostBtn.disabled = false;
+    hostBtn.textContent = label;
+  }
+};
+
+const macBtn = document.getElementById('btn-macs');
+macBtn.onclick = async () => {
+  macBtn.disabled = true;
+  macBtn.innerHTML = '<span class="spin"></span> 讀取中';
+  try {
+    const r = await (await fetch('/api/macs/refresh', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: '{}',
+    })).json();
+    if (!r.ok){
+      toast('err', '刷新 MAC 失敗', r.error || '未知錯誤');
+      return;
+    }
+    toast(r.os_mac === r.total ? 'ok' : 'warn',
+      `MAC: OS ${r.os_mac} · BMC ${r.bmc_mac} · BF4 OS ${r.bf4_os_mac} · BF4 BMC ${r.bf4_bmc_mac} / ${r.total}`,
+      r.os_mac === r.total
+        ? '全部節點已更新'
+        : '未回應的節點保留原值，通常是機器未開機或管理網段不通');
+    await refresh();
+  } catch (e){
+    toast('err', '刷新 MAC 失敗', String(e));
+  } finally {
+    macBtn.disabled = false;
+    macBtn.textContent = '刷新 MAC';
+  }
+};
+
+refresh();
+setInterval(refresh, 20000);
+</script>
+</body>
+</html>

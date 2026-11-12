@@ -1,0 +1,14 @@
+inventory.json
+inventory.json.tmp
+rackd.log
+*.log
+__pycache__/
+*.pyc
+
+# uploaded firmware packages (large binaries, may be confidential)
+fw/*
+!fw/.gitkeep
+
+# vendor scripts pushed to nodes (Wistron-internal, never commit)
+vendor/*
+!vendor/.gitkeep

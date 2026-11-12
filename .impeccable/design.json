@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-26T18:14:30+08:00",
+  "title": "Design System: Neutrino Rack Manager",
+  "extensions": {
+    "colorMeta": {
+      "dark-canvas": {
+        "role": "neutral",
+        "displayName": "Blue-Black Canvas",
+        "canonical": "#0b1015",
+        "tonalRamp": ["oklch(15% 0.012 245)", "oklch(25% 0.012 245)", "oklch(35% 0.012 245)", "oklch(47% 0.012 245)", "oklch(59% 0.012 245)", "oklch(71% 0.012 245)", "oklch(83% 0.012 245)", "oklch(95% 0.012 245)"]
+      },
+      "dark-panel": {
+        "role": "neutral",
+        "displayName": "Graphite Panel",
+        "canonical": "#12191f",
+        "tonalRamp": ["oklch(15% 0.014 245)", "oklch(25% 0.014 245)", "oklch(35% 0.014 245)", "oklch(47% 0.014 245)", "oklch(59% 0.014 245)", "oklch(71% 0.014 245)", "oklch(83% 0.014 245)", "oklch(95% 0.014 245)"]
+      },
+      "dark-panel-raised": {
+        "role": "neutral",
+        "displayName": "Raised Graphite",
+        "canonical": "#182129",
+        "tonalRamp": ["oklch(15% 0.016 245)", "oklch(25% 0.016 245)", "oklch(35% 0.016 245)", "oklch(47% 0.016 245)", "oklch(59% 0.016 245)", "oklch(71% 0.016 245)", "oklch(83% 0.016 245)", "oklch(95% 0.016 245)"]
+      },
+      "dark-accent": {
+        "role": "primary",
+        "displayName": "Instrument Teal",
+        "canonical": "#62b9b3",
+        "tonalRamp": ["oklch(15% 0.065 190)", "oklch(25% 0.065 190)", "oklch(35% 0.065 190)", "oklch(47% 0.065 190)", "oklch(59% 0.065 190)", "oklch(71% 0.065 190)", "oklch(83% 0.065 190)", "oklch(95% 0.065 190)"]
+      },
+      "dark-success": {
+        "role": "tertiary",
+        "displayName": "Operational Green",
+        "canonical": "#70c697",
+        "tonalRamp": ["oklch(15% 0.09 150)", "oklch(25% 0.09 150)", "oklch(35% 0.09 150)", "oklch(47% 0.09 150)", "oklch(59% 0.09 150)", "oklch(71% 0.09 150)", "oklch(83% 0.09 150)", "oklch(95% 0.09 150)"]
+      },
+      "dark-warning": {
+        "role": "tertiary",
+        "displayName": "Attention Amber",
+        "canonical": "#d7b36d",
+        "tonalRamp": ["oklch(15% 0.09 80)", "oklch(25% 0.09 80)", "oklch(35% 0.09 80)", "oklch(47% 0.09 80)", "oklch(59% 0.09 80)", "oklch(71% 0.09 80)", "oklch(83% 0.09 80)", "oklch(95% 0.09 80)"]
+      },
+      "dark-danger": {
+        "role": "tertiary",
+        "displayName": "Interlock Red",
+        "canonical": "#e18787",
+        "tonalRamp": ["oklch(15% 0.11 24)", "oklch(25% 0.11 24)", "oklch(35% 0.11 24)", "oklch(47% 0.11 24)", "oklch(59% 0.11 24)", "oklch(71% 0.11 24)", "oklch(83% 0.11 24)", "oklch(95% 0.11 24)"]
+      },
+      "light-canvas": {
+        "role": "neutral",
+        "displayName": "Cool Alloy Canvas",
+        "canonical": "#e9eef0",
+        "tonalRamp": ["oklch(15% 0.01 220)", "oklch(25% 0.01 220)", "oklch(35% 0.01 220)", "oklch(47% 0.01 220)", "oklch(59% 0.01 220)", "oklch(71% 0.01 220)", "oklch(83% 0.01 220)", "oklch(95% 0.01 220)"]
+      },
+      "light-panel": {
+        "role": "neutral",
+        "displayName": "Instrument White Panel",
+        "canonical": "#fbfcfc",
+        "tonalRamp": ["oklch(15% 0.006 220)", "oklch(25% 0.006 220)", "oklch(35% 0.006 220)", "oklch(47% 0.006 220)", "oklch(59% 0.006 220)", "oklch(71% 0.006 220)", "oklch(83% 0.006 220)", "oklch(95% 0.006 220)"]
+      },
+      "light-accent": {
+        "role": "primary",
+        "displayName": "Deep Instrument Teal",
+        "canonical": "#176f75",
+        "tonalRamp": ["oklch(15% 0.065 190)", "oklch(25% 0.065 190)", "oklch(35% 0.065 190)", "oklch(47% 0.065 190)", "oklch(59% 0.065 190)", "oklch(71% 0.065 190)", "oklch(83% 0.065 190)", "oklch(95% 0.065 190)"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Dialog Display",
+        "purpose": "Highest local title in hardware and confirmation overlays."
+      },
+      "headline": {
+        "displayName": "Workflow Headline",
+        "purpose": "Names major firmware and inventory workflow cards."
+      },
+      "title": {
+        "displayName": "Equipment Title",
+        "purpose": "Names trays, nodes, shelves, and compact sections."
+      },
+      "body": {
+        "displayName": "Operational Body",
+        "purpose": "Default bilingual application copy."
+      },
+      "control": {
+        "displayName": "Control Label",
+        "purpose": "Buttons, navigation rows, and interactive controls."
+      },
+      "label": {
+        "displayName": "Instrument Label",
+        "purpose": "Uppercase scope keys, table headings, and field labels."
+      },
+      "mono": {
+        "displayName": "Machine Readout",
+        "purpose": "IP addresses, commands, firmware versions, and exact machine results."
+      }
+    },
+    "shadows": [
+      {
+        "name": "overlay-dark",
+        "value": "0 18px 36px rgba(0,0,0,.46)",
+        "purpose": "Modal, action popover, and toast separation in dark mode."
+      },
+      {
+        "name": "overlay-light",
+        "value": "0 16px 34px rgba(25,48,56,.16)",
+        "purpose": "Modal, action popover, and toast separation in light mode."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-fast",
+        "value": "140ms ease",
+        "purpose": "Button, navigation, border, background, and color state changes."
+      },
+      {
+        "name": "toast-exit",
+        "value": "200ms ease-in",
+        "purpose": "Dismisses transient notifications; entrance remains still in the premium foundation."
+      },
+      {
+        "name": "spinner-linear",
+        "value": "700ms linear infinite",
+        "purpose": "Signals active scans, hardware reads, and executions."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "Collapses animation and transition duration when reduced motion is requested."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "rail-compact",
+        "value": "1320px"
+      },
+      {
+        "name": "rack-two-column",
+        "value": "1120px"
+      },
+      {
+        "name": "mobile-stack",
+        "value": "760px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The singular safe next step or completion action on a workflow surface.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">寫入清單</button>",
+      "css": ".ds-btn-primary{min-height:34px;padding:7px 13px;border:1px solid var(--accent,#62b9b3);border-radius:8px;background:var(--accent,#62b9b3);color:var(--accent-ink,#071315);font:560 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif;cursor:pointer;transition:background-color .14s,border-color .14s,color .14s}.ds-btn-primary:hover{background:var(--accent-strong,#85cbc6);border-color:var(--accent-strong,#85cbc6);color:var(--accent-ink,#071315)}.ds-btn-primary:focus-visible{outline:3px solid var(--focus,#85cbc6);outline-offset:2px}.ds-btn-primary:active{background:var(--accent,#62b9b3);border-color:var(--accent,#62b9b3)}.ds-btn-primary:disabled{border-color:var(--border-soft,#243139);background:var(--bg-panel-2,#182129);color:var(--text-faint,#8c9ca3);opacity:1;cursor:not-allowed}"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "A risk-bearing action that stays restrained until direct interaction or final confirmation.",
+      "html": "<button class=\"ds-btn-danger\" type=\"button\">確定執行</button>",
+      "css": ".ds-btn-danger{min-height:34px;padding:7px 13px;border:1px solid var(--red,#e18787);border-radius:8px;background:var(--red-bg,rgba(225,135,135,.12));color:var(--red,#e18787);font:560 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif;cursor:pointer;transition:background-color .14s,border-color .14s,color .14s}.ds-btn-danger:hover{background:var(--red,#e18787);border-color:var(--red,#e18787);color:var(--danger-ink,#161010)}.ds-btn-danger:focus-visible{outline:3px solid var(--focus,#85cbc6);outline-offset:2px}.ds-btn-danger:active{background:var(--red-bg,rgba(225,135,135,.12));color:var(--red,#e18787)}.ds-btn-danger:disabled{border-color:var(--border-soft,#243139);background:var(--bg-panel-2,#182129);color:var(--text-faint,#8c9ca3);opacity:1;cursor:not-allowed}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A compact technical field with a stable border and complete machine-readable value.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">BMC IP</span><input class=\"ds-input\" value=\"10.36.72.220\" /></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:7px;color:var(--text-faint,#8c9ca3);font:600 11px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif;letter-spacing:.65px;text-transform:uppercase}.ds-input{width:220px;min-height:40px;padding:8px 11px;border:1px solid var(--border,#5b6b73);border-radius:8px;background:var(--bg-panel-2,#182129);color:var(--text,#edf3f3);font:400 13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;transition:border-color .14s}.ds-input:hover{border-color:var(--text-faint,#8c9ca3)}.ds-input:focus{outline:none;border-color:var(--accent,#62b9b3)}.ds-input:focus-visible{outline:3px solid var(--focus,#85cbc6);outline-offset:2px}.ds-input:disabled{border-color:var(--border-soft,#243139);background:var(--bg-panel-2,#182129);color:var(--text-faint,#8c9ca3);opacity:1;cursor:not-allowed}"
+    },
+    {
+      "name": "Navigation Item",
+      "kind": "nav",
+      "refersTo": "nav-item",
+      "description": "A calm operational destination with a compact letter marker and explicit active state.",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-item ds-active\" aria-current=\"page\"><span class=\"ds-nav-mark\" aria-hidden=\"true\">R</span>Rack 總覽</button><button class=\"ds-nav-item\"><span class=\"ds-nav-mark\" aria-hidden=\"true\">S</span>Power Shelf</button></nav>",
+      "css": ".ds-nav{display:grid;gap:4px;width:210px}.ds-nav-item{display:flex;align-items:center;gap:10px;min-height:42px;padding:10px 11px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--sidebar-text-dim,#8ea0a7);font:560 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif;text-align:left;cursor:pointer;transition:background-color .14s,border-color .14s,color .14s}.ds-nav-item:hover{background:var(--bg-hover,#1c272f);border-color:var(--border-soft,#243139);color:var(--sidebar-text,#dce6e7)}.ds-nav-item:focus-visible{outline:3px solid var(--focus,rgba(98,185,179,.34));outline-offset:2px}.ds-nav-item.ds-active{background:var(--accent-bg,rgba(98,185,179,.12));border-color:transparent;color:var(--accent-strong,#85cbc6)}.ds-nav-mark{display:grid;place-items:center;width:19px;height:19px;border:1px solid currentColor;border-radius:5px;font-size:10px;opacity:.8}"
+    },
+    {
+      "name": "Explicit State Chip",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "A non-color-only equipment readout that pairs a scope label with a named state.",
+      "html": "<span class=\"ds-state-chip ds-is-up\"><span class=\"ds-state-label\">BMC</span><span class=\"ds-state-value\">Online</span></span>",
+      "css": ".ds-state-chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:4px 8px;border:1px solid var(--border-soft,#243139);border-radius:6px;background:var(--bg-panel-2,#182129);white-space:nowrap;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif}.ds-state-label{color:var(--text-faint,#8c9ca3);font-size:11px;font-weight:600;letter-spacing:.45px;text-transform:uppercase}.ds-state-value{color:var(--text,#edf3f3);font-size:12px;font-weight:650}.ds-is-up .ds-state-value{color:var(--green,#70c697)}.ds-state-chip:hover{border-color:var(--border,#5b6b73)}.ds-state-chip:focus-within{outline:3px solid var(--focus,rgba(98,185,179,.34));outline-offset:2px}"
+    },
+    {
+      "name": "Tray Container",
+      "kind": "card",
+      "refersTo": "tray-container",
+      "description": "The signature stable operating row: a status header over equal node cells with no decorative lift.",
+      "html": "<section class=\"ds-tray\"><header class=\"ds-tray-head\"><strong>Neutrino08</strong><span class=\"ds-health\"><span class=\"ds-dot\"></span>OS 4/4 <em>Healthy</em></span></header><div class=\"ds-nodes\"><article class=\"ds-node\"><strong>node-01</strong><code>10.36.72.101</code></article><article class=\"ds-node\"><strong>node-02</strong><code>10.36.72.102</code></article></div></section>",
+      "css": ".ds-tray{overflow:hidden;border:1px solid var(--border-soft,#243139);border-radius:12px;background:var(--bg-panel,#12191f);color:var(--text,#edf3f3);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif}.ds-tray-head{display:flex;align-items:center;gap:16px;min-height:62px;padding:13px 16px;border-bottom:1px solid var(--border-soft,#243139);background:var(--bg-panel-2,#182129)}.ds-tray-head>strong{font-size:15px;font-weight:720}.ds-health{display:inline-flex;align-items:center;gap:6px;color:var(--text,#edf3f3);font-size:12px;font-weight:650}.ds-health em{color:var(--text-faint,#8c9ca3);font-style:normal;font-weight:400}.ds-dot{width:7px;height:7px;border-radius:50%;background:var(--green,#70c697)}.ds-nodes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--border-soft,#243139)}.ds-node{display:grid;gap:10px;min-width:190px;padding:16px;background:var(--bg-panel,#12191f)}.ds-node strong{font-size:15px}.ds-node code{color:var(--text,#edf3f3);font:400 13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}.ds-node:hover{background:var(--bg-panel,#12191f)}.ds-tray:focus-within{outline:3px solid var(--focus,rgba(98,185,179,.34));outline-offset:2px}"
+    },
+    {
+      "name": "Power Action Disclosure",
+      "kind": "custom",
+      "refersTo": "button-default",
+      "description": "The safety-first disclosure that keeps seven exact power actions hidden until the operator requests them.",
+      "html": "<details class=\"ds-actions\"><summary><span>Power actions</span><span class=\"ds-actions-count\">7</span></summary><div class=\"ds-actions-panel\"><button>Power On</button><button class=\"ds-risk\">Power Off</button><button>Graceful Off</button><button class=\"ds-risk\">Aux Cycle</button></div></details>",
+      "css": ".ds-actions{position:relative;color:var(--text-dim,#b4c0c4);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif}.ds-actions>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;padding:6px 10px;border:1px solid var(--border,#5b6b73);border-radius:8px;background:var(--bg-panel-2,#182129);font-size:11.5px;font-weight:650;cursor:pointer;list-style:none}.ds-actions>summary::-webkit-details-marker{display:none}.ds-actions>summary:hover{border-color:var(--accent,#62b9b3);color:var(--text,#edf3f3)}.ds-actions>summary:focus-visible{outline:3px solid var(--focus,rgba(98,185,179,.34));outline-offset:2px}.ds-actions[open]>summary{border-color:var(--accent,#62b9b3);background:var(--accent-bg,rgba(98,185,179,.12));color:var(--accent-strong,#85cbc6)}.ds-actions-count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:18px;padding:0 5px;border-radius:5px;background:var(--bg-panel,#12191f);color:var(--text-faint,#8c9ca3);font-size:11px}.ds-actions-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding-top:8px}.ds-actions-panel button{min-height:30px;padding:5px 10px;border:1px solid var(--border,#5b6b73);border-radius:7px;background:var(--bg-panel-2,#182129);color:var(--text-dim,#b4c0c4);font:560 11.5px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif;text-align:left;cursor:pointer}.ds-actions-panel button:hover{border-color:var(--accent,#62b9b3);background:var(--accent-bg,rgba(98,185,179,.12));color:var(--accent-strong,#85cbc6)}.ds-actions-panel button:focus-visible{outline:3px solid var(--focus,rgba(98,185,179,.34));outline-offset:2px}.ds-actions-panel .ds-risk{color:var(--red,#e18787)}.ds-actions-panel .ds-risk:hover{border-color:var(--red,#e18787);background:var(--red-bg,rgba(225,135,135,.12));color:var(--red,#e18787)}"
+    },
+    {
+      "name": "Confirmation Dialog",
+      "kind": "custom",
+      "refersTo": "tray-container",
+      "description": "A scoped interruption that names the target, command, and consequence before execution.",
+      "html": "<section class=\"ds-dialog\" role=\"dialog\" aria-labelledby=\"ds-dialog-title\"><h3 id=\"ds-dialog-title\">Neutrino08 · Power Off</h3><p>對 Neutrino08 的全部 4 個 node 執行 Power Off。</p><div class=\"ds-scope\"><span>SCOPE</span><strong>TRAY · 4 NODES</strong></div><div class=\"ds-warning\">立即切斷機箱電源，不通知 OS。未儲存的資料會遺失。</div><footer><button class=\"ds-cancel\">取消</button><button class=\"ds-confirm\">確定執行</button></footer></section>",
+      "css": ".ds-dialog{width:min(508px,100%);padding:24px 26px;border:1px solid var(--border,#5b6b73);border-radius:14px;background:var(--bg-panel,#12191f);box-shadow:0 18px 36px rgba(0,0,0,.46);color:var(--text,#edf3f3);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif}.ds-dialog h3{margin:0 0 8px;font-size:19px;line-height:1.25}.ds-dialog p{margin:0 0 14px;color:var(--text-dim,#b4c0c4);font-size:13.5px;line-height:1.65}.ds-scope{display:flex;justify-content:space-between;gap:12px;margin-bottom:12px;padding:11px 13px;border:1px solid var(--border-soft,#243139);border-radius:8px;background:var(--bg-panel-2,#182129);font-size:13px}.ds-scope span{color:var(--text-faint,#8c9ca3);font-size:11px;font-weight:600;letter-spacing:.7px}.ds-warning{margin-bottom:14px;padding:12px 14px;border:1px solid var(--red,#e18787);border-radius:9px;background:var(--red-bg,rgba(225,135,135,.12));color:var(--red,#e18787);font-size:13px;line-height:1.55}.ds-dialog footer{display:flex;justify-content:flex-end;gap:10px;padding-top:4px}.ds-dialog button{min-height:34px;padding:7px 13px;border-radius:8px;font:560 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif;cursor:pointer;transition:background-color .14s,border-color .14s,color .14s}.ds-cancel{border:1px solid var(--border,#5b6b73);background:var(--bg-panel-2,#182129);color:var(--text-dim,#b4c0c4)}.ds-cancel:hover{background:var(--bg-hover,#1c272f);border-color:var(--accent,#62b9b3);color:var(--text,#edf3f3)}.ds-confirm{border:1px solid var(--red,#e18787);background:var(--red-bg,rgba(225,135,135,.12));color:var(--red,#e18787)}.ds-confirm:hover{background:var(--red,#e18787);border-color:var(--red,#e18787);color:#161010}.ds-dialog button:focus-visible{outline:3px solid var(--focus,rgba(98,185,179,.34));outline-offset:2px}"
+    },
+    {
+      "name": "Status Toast",
+      "kind": "custom",
+      "refersTo": "tray-container",
+      "description": "A compact text-first notification that reports both class and outcome without relying on color.",
+      "html": "<div class=\"ds-toast ds-warn\" role=\"status\"><span class=\"ds-toast-kind\">WARN</span><div><strong>Power state partial</strong><p>2 of 4 nodes report Unknown.</p></div><button aria-label=\"關閉\"></button></div>",
+      "css": ".ds-toast{display:flex;align-items:flex-start;gap:10px;width:min(398px,100%);padding:13px 15px;border:1px solid var(--border,#5b6b73);border-radius:10px;background:var(--bg-panel,#12191f);box-shadow:0 18px 36px rgba(0,0,0,.46);color:var(--text,#edf3f3);font:400 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',Roboto,sans-serif}.ds-toast-kind{min-width:38px;color:var(--amber,#d7b36d);font-size:11px;font-weight:750;letter-spacing:.35px}.ds-toast strong{font-weight:700}.ds-toast p{margin:2px 0 0;color:var(--text-dim,#b4c0c4);font-size:11.5px}.ds-toast button{position:relative;margin-left:auto;width:28px;height:28px;padding:0;border:0;background:transparent;color:var(--text-faint,#8c9ca3);cursor:pointer}.ds-toast button::before,.ds-toast button::after{content:'';position:absolute;left:50%;top:50%;width:13px;height:1.5px;border-radius:2px;background:currentColor}.ds-toast button::before{transform:translate(-50%,-50%) rotate(45deg)}.ds-toast button::after{transform:translate(-50%,-50%) rotate(-45deg)}.ds-toast button:hover{color:var(--text,#edf3f3)}.ds-toast button:focus-visible{outline:3px solid var(--focus,rgba(98,185,179,.34));outline-offset:2px}.ds-toast.ds-warn{border-color:var(--amber,#d7b36d)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Fabrication Control Surface",
+    "overview": "Neutrino Rack Manager should feel like the quiet control layer of a semiconductor fabrication line: engineered, continuously observable, and deliberately uneventful until attention is required. Deep graphite and blue-black planes keep long sessions comfortable, while cool dividers and tabular facts turn a dense rack into an orderly instrument rather than a collection of dashboard cards.\n\nThe system is state-first and safety-first. Names, addresses, connectivity, and explicit text status remain visible before any control is considered; routine controls are restrained, and consequential actions only gain semantic warning color when revealed or confirmed. Light and dark themes share the same hierarchy and interaction logic rather than becoming separate visual identities.\n\nMotion is brief and functional: it acknowledges state changes, loading, or transient notification entry. Surfaces remain grounded at rest, without decorative glow, gradients, or hover lift. The design rejects bright status mosaics, simultaneous rainbow actions, and ambiguous icon-only state.",
+    "keyCharacteristics": [
+      "Graphite and blue-black tonal layering with a cool, low-saturation teal interaction accent.",
+      "Calm operational density: compact controls, legible full addresses, and stable rack geometry.",
+      "Explicit status text supported by semantic color, never replaced by it.",
+      "Flat, hairline-separated surfaces with depth reserved for overlays and transient layers.",
+      "Progressive disclosure for power actions, followed by scope-and-consequence confirmation.",
+      "Tabular numerals and monospace facts where operators compare addresses, counts, commands, or versions."
+    ],
+    "rules": [
+      {
+        "name": "The One Instrument Voice Rule",
+        "body": "Teal is the only non-semantic interaction accent; do not add another brand or navigation hue.",
+        "section": "colors"
+      },
+      {
+        "name": "The Text Before Hue Rule",
+        "body": "Every operational state is named in text first. Color may reinforce `Online`, `Offline`, `Partial`, `On`, `Off`, `Unknown`, `WARN`, or `ERR`, but may never carry that meaning alone.",
+        "section": "colors"
+      },
+      {
+        "name": "The Earned Alarm Rule",
+        "body": "Green, amber, and red appear only when live state, feedback, or action risk earns them; they are never used to decorate navigation, charts, or generic hierarchy.",
+        "section": "colors"
+      },
+      {
+        "name": "The Readout Integrity Rule",
+        "body": "Never truncate operational addresses, node names, versions, or confirmation scope merely to preserve a decorative composition; wrap safely or widen the fact column.",
+        "section": "typography"
+      },
+      {
+        "name": "The Quiet Hierarchy Rule",
+        "body": "Build hierarchy through compact steps in weight, spacing, and tone. Avoid oversized headings that displace rack state from the first viewport.",
+        "section": "typography"
+      },
+      {
+        "name": "The Stable Rack Rule",
+        "body": "Responsive behavior may reflow node columns, but it must not reorder scope, hide operational identity, or collapse distinct OS, BMC, and Power state into one ambiguous summary.",
+        "section": "layout"
+      },
+      {
+        "name": "The Grounded Equipment Rule",
+        "body": "Persistent operational surfaces stay flat at rest. Do not add card lift, glow, glass blur, or decorative shadow to trays and nodes.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Overlay Earns Depth Rule",
+        "body": "Strong shadow is reserved for content that temporarily interrupts or floats above the operating plane.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Square Shoulder Rule",
+        "body": "Reuse the observed 4–14px corner ladder. Do not turn trays, node cells, workflow cards, or ordinary buttons into capsules.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "**Do** keep names, complete addresses, OS/BMC connectivity, and Power state ahead of controls in the reading order.",
+      "**Do** use nested neutral tones and 1px dividers to organize dense rack information before reaching for shadow.",
+      "**Do** preserve explicit `Healthy`, `Partial`, `Offline`, `Online`, `Off`, and `Unknown` language beside any semantic color.",
+      "**Do** reveal the seven power actions progressively and repeat scope plus consequence at confirmation.",
+      "**Do** preserve keyboard focus, reduced-motion behavior, tabular numerals, and the dark/light theme role mapping.",
+      "**Do** reserve monospace typography for facts operators compare exactly: IPs, commands, versions, and raw results."
+    ],
+    "donts": [
+      "**Don't** decorate navigation, generic cards, or page chrome with green, amber, or red.",
+      "**Don't** present all power operations as a simultaneous rainbow button row.",
+      "**Don't** add hover lift, neon glow, glass blur, or ornamental gradients to persistent equipment surfaces.",
+      "**Don't** encode state with dots or color alone, and don't style normal Power Off as an error.",
+      "**Don't** use oversized marketing typography, pill-shaped cards, or airy spacing that pushes a complete tray out of the operating viewport.",
+      "**Don't** hide destructive scope, transport, confirmation requirements, or follow-up steps behind icon-only controls."
+    ]
+  }
+}
