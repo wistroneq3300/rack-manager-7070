@@ -79,11 +79,22 @@ frame desynchronises the stream (symptom: `unknown message type`).
 - `GET /kvm/0` over plain HTTPS returns 404 — the path only exists as a
   WebSocket upgrade, which is why earlier HTTP probes looked empty.
 
-## Status
+## Status — implemented
 
-Research complete; **not integrated into rack-manager**. Wiring it up would need
-a WebSocket-capable server (rackd is `http.server`), a proxy that keeps BMC
-credentials server-side, and a noVNC front-end.
+Now wired into Rack Manager:
+
+- `rack_kvm.py` — BMC login + websocket client + the browser-side framing, so
+  rackd needs no new dependency. rackd upgrades `/api/kvm?node=…` and relays.
+- Front end uses **noVNC** (`static/vendor/novnc`, MPL 2.0) rather than a
+  hand-written decoder. A first attempt did hand-roll RFB; it worked on the
+  initial Raw frame but broke on the stream edge cases (partial reads were
+  consumed before they were complete, and the rect parser fell through into
+  the message-header branch). noVNC already handles every encoding, the
+  clipboard and the input mapping, so it is both smaller in total risk and
+  fewer lines to own.
+
+**Do not go back to a custom decoder.** The remaining complexity is in the
+protocol's corner cases, not in our UI.
 
 ---
 
@@ -142,3 +153,13 @@ black screen. Verify the frame encoding against a real browser session instead.
   incremental updates (`incremental=1`) is what keeps it usable for a viewer.
 - Keysym values are X11 keysyms (`0xff53` = Right arrow, `0xff14` = ScrollLock),
   not USB HID codes. A front-end must translate from `KeyboardEvent.code`.
+
+## Observed framebuffers
+
+Resolution is not fixed. The same BMC reported 640x480, 800x600 and 1024x768
+across sessions, and it changes *while connected* via the DesktopSize
+pseudo-encoding — a viewer must react to that rather than assume one size.
+
+A blank console is normal: a powered host with no graphical output shows only
+the BMC's own mouse pointer, and a tty with a login prompt shows nothing until
+something is typed.

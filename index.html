@@ -635,6 +635,24 @@ input:disabled,select:disabled{
 
 /* Launch-a-terminal affordance. Reads as a quiet label until hovered, so the
    address rows keep their original calm rhythm and only light up on intent. */
+/* KVM sits under HW/FW as the second node-level tool. */
+.node > .kvm-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  font:inherit;font-size:9.5px;font-weight:700;letter-spacing:.4px;
+  padding:3px 8px;min-height:24px;margin:3px 0 0;border-radius:6px;
+  border:1px solid var(--border-soft);background:transparent;
+  color:var(--text-faint);cursor:pointer;text-transform:uppercase
+}
+.node > .kvm-btn:hover:not(:disabled){
+  border-color:var(--accent);background:var(--accent-bg);color:var(--accent-strong)
+}
+.node > .kvm-btn.is-open{
+  border-color:color-mix(in srgb,var(--green) 50%,var(--border));
+  background:var(--green-bg);color:var(--green)
+}
+.node > .kvm-btn:disabled{color:var(--text-xfaint);cursor:not-allowed;
+  border-color:var(--border-soft)}
+
 /* Tier-a name button: the tray name is the way into its credentials. */
 .tray-name-btn{
   display:inline-flex;align-items:center;gap:7px;
@@ -650,6 +668,53 @@ input:disabled,select:disabled{
   color:var(--text-faint);border:1px solid var(--border-soft);
   text-transform:uppercase}
 .tray-name-btn:hover::after{color:var(--accent-strong);border-color:var(--accent)}
+
+/* ---------- KVM console windows ----------
+   Floating, not modal: the rack stays usable while a console is open. */
+#kvm-layer{position:fixed;inset:0;pointer-events:none;z-index:60}
+.kvm-win{position:fixed;pointer-events:auto;width:min(560px,calc(100vw - 24px));
+  background:var(--bg-panel,#141821);border:1px solid var(--border);
+  border-radius:10px;box-shadow:0 18px 48px rgba(0,0,0,.55);overflow:hidden;
+  display:flex;flex-direction:column}
+.kvm-win.is-dead{opacity:.92}
+.kvm-bar{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:move;
+  background:var(--bg-raise,rgba(255,255,255,.05));border-bottom:1px solid var(--border-soft);
+  font-size:12px;user-select:none}
+.kvm-bar b{font-size:12px}
+.kvm-state{font-size:11px;color:var(--text-faint);margin-left:auto;margin-right:6px}
+.kvm-dot{width:7px;height:7px;border-radius:50%;background:var(--dot-off);flex:none}
+.kvm-dot.live{background:var(--green)}
+.kvm-dot.connecting{background:var(--accent);animation:kvmPulse 1s infinite}
+.kvm-dot.dead{background:var(--red,#e05555)}
+@keyframes kvmPulse{50%{opacity:.35}}
+.kvm-x{width:20px;height:20px;border-radius:5px;border:1px solid transparent;
+  background:transparent;cursor:pointer;position:relative;flex:none}
+.kvm-x::before,.kvm-x::after{content:"";position:absolute;left:50%;top:50%;
+  width:11px;height:1.5px;background:var(--text-faint);border-radius:2px}
+.kvm-x::before{transform:translate(-50%,-50%) rotate(45deg)}
+.kvm-x::after{transform:translate(-50%,-50%) rotate(-45deg)}
+.kvm-x:hover{background:var(--bg-hover);border-color:var(--border)}
+/* noVNC builds its own div > canvas inside this node, so the size has to be
+   given to the container and not to the canvas directly. */
+/* noVNC owns the layout inside this node: it sizes its own div and positions
+   the canvas itself when scaling, so imposing flex centring here fights it
+   and clips the left edge. Give it a fixed box and stay out of the way. */
+.kvm-screen{position:relative;background:#000;height:min(44vh,400px);
+  width:100%;overflow:hidden}
+.kvm-screen canvas{image-rendering:pixelated;outline:none;cursor:default}
+.kvm-screen canvas:focus{box-shadow:inset 0 0 0 2px var(--accent)}
+.kvm-foot{display:flex;align-items:center;gap:8px;padding:5px 10px;
+  font-size:10.5px;color:var(--text-xfaint);border-top:1px solid var(--border-soft)}
+.kvm-hint{flex:1}
+.kvm-fit{font:inherit;font-size:10px;padding:2px 7px;border-radius:5px;
+  border:1px solid var(--border-soft);background:transparent;
+  color:var(--text-faint);cursor:pointer}
+.kvm-fit:hover,.kvm-fit.on{color:var(--accent-strong);border-color:var(--accent);
+  background:var(--accent-bg)}
+.kvm-dead{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;
+  align-items:center;justify-content:center;background:rgba(0,0,0,.78);
+  color:var(--text);font-size:12.5px;text-align:center;padding:16px}
+.kvm-dead strong{color:var(--red,#e05555)}
 
 .cred-modal{width:min(980px,100%)}
 .cred-body{overflow:auto;padding:2px 0 6px}
@@ -1260,6 +1325,8 @@ button>.ui-icon,.btn-upload>.ui-icon{margin-right:7px}
 
 <div id="toasts" role="status" aria-live="polite" aria-relevant="additions"></div>
 
+<div id="kvm-layer"></div>
+
 <div class="overlay" id="overlay">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
     <h3 id="m-title">確認</h3>
@@ -1669,6 +1736,9 @@ function patchNodeCell(cell, n){
   setGate('bf4_os', n.bf4_os_up);
   setGate('bf4_bmc', n.bf4_bmc_up);
 
+  const kb = cell.querySelector('.kvm-btn');
+  if (kb) kvmGate(kb, n);
+
   // hostname row
   const hostEl = cell.querySelector('.node-host');
   const hostDiffers = n.os_hostname && n.os_hostname !== n.name;
@@ -1781,6 +1851,15 @@ function buildRack(data, focusKey){
       hwBtn.onclick = () => openHw(n.name, hwBtn);
       idRow.appendChild(hwBtn);
       cell.appendChild(idRow);
+      // KVM sits directly under HW/FW: same row of node-level tools, one per
+      // node. It is greyed when the BMC is not answering, because the console
+      // is served by the BMC itself.
+      const kvmBtn = el('button', 'kvm-btn', 'KVM');
+      kvmBtn.dataset.focusKey = `node:${n.name}:kvm`;
+      kvmBtn.dataset.kvmNode = n.name;
+      kvmBtn.onclick = () => kvmOpen(n.name);
+      kvmGate(kvmBtn, n);
+      cell.appendChild(kvmBtn);
       // Each MAC trails its own IP on the same line, small and faint: it
       // identifies the port, it is not a second address to read.
       const ipCell = (ip, mac, kind) =>
@@ -3477,6 +3556,135 @@ document.getElementById('m-cancel').onclick = closeModal;
 document.getElementById('overlay').onclick = e => {
   if (e.target.id === 'overlay') closeModal();
 };
+/* ---------- KVM console ----------
+   Uses noVNC rather than a hand-rolled RFB decoder: the BMC negotiates
+   whatever encoding it likes (we saw Raw, but Tight/ZRLE are legal), and
+   noVNC already implements all of them plus the input and clipboard paths.
+   rackd relays the BMC socket, so the page never holds BMC credentials. */
+const KVM = {wins: new Map(), seq: 0};
+
+function kvmOpen(node){
+  const existing = [...KVM.wins.values()].find(w => w.node === node);
+  if (existing){ existing.win.style.zIndex = ++kvmZ; return existing; }
+  const id = ++KVM.seq;
+  const win = el('div', 'kvm-win');
+  win.style.zIndex = ++kvmZ;
+  const bar = el('div', 'kvm-bar',
+    `<span class="kvm-dot connecting"></span><b>${esc(node)}</b>`
+    + `<span class="kvm-state">連線中…</span>`);
+  const close = el('button', 'kvm-x');
+  close.innerHTML = '<span class="sr-only">關閉</span>';
+  close.onclick = () => kvmClose(id);
+  bar.appendChild(close);
+  const screen = el('div', 'kvm-screen');
+  screen.tabIndex = 0;
+  const foot = el('div', 'kvm-foot',
+    '<span class="kvm-hint">點畫面後可輸入 · 剪貼簿雙向同步</span>'
+    + '<button class="kvm-fit">縮放</button>');
+  win.append(bar, screen, foot);
+  document.getElementById('kvm-layer').appendChild(win);
+
+  const entry = {id, node, win, screen, bar, rfb:null,
+                 state: bar.querySelector('.kvm-state'),
+                 dot: bar.querySelector('.kvm-dot')};
+  KVM.wins.set(id, entry);
+  // Cascade so a second console does not land exactly on the first; the bar
+  // stays reachable for dragging either way.
+  const slot = (KVM.wins.size) % 6;
+  win.style.left = `${36 + slot * 38}px`;
+  win.style.top  = `${36 + slot * 34}px`;
+  win.addEventListener('pointerdown', () => { win.style.zIndex = ++kvmZ; }, true);
+  kvmMakeDraggable(entry);
+  foot.querySelector('.kvm-fit').onclick = () => {
+    if (entry.rfb) entry.rfb.scaleViewport = !entry.rfb.scaleViewport;
+    foot.querySelector('.kvm-fit').classList.toggle('on', entry.rfb && entry.rfb.scaleViewport);
+  };
+  for (const t of ['pointerdown','pointerup']) win.addEventListener(t, e => e.stopPropagation());
+  kvmStart(entry);
+  return entry;
+}
+let kvmZ = 60;
+
+function kvmState(entry, text, cls){
+  entry.state.textContent = text;
+  entry.dot.className = `kvm-dot ${cls}`;
+}
+
+async function kvmStart(entry){
+  kvmState(entry, '連線中…', 'connecting');
+  try {
+    const {default: RFB} = await import('/static/vendor/novnc/core/rfb.js');
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const url = `${proto}//${location.host}/api/kvm?node=${encodeURIComponent(entry.node)}`;
+    const rfb = new RFB(entry.screen, url, {shared:true});
+    entry.rfb = rfb;
+    rfb.resizeSession = false;
+    rfb.background = '#000';
+    rfb.addEventListener('connect', () => {
+      // Scaling can only be computed once the framebuffer size and the box
+      // size are both known, so enable it after the handshake, not before.
+      rfb.scaleViewport = true;
+      kvmState(entry, '已連線', 'live');
+    });
+    rfb.addEventListener('disconnect', ev => {
+      if (entry.gone) return;
+      const why = ev.detail && ev.detail.clean ? '已離線' : '連線中斷';
+      kvmState(entry, why, 'dead');
+      entry.win.classList.add('is-dead');
+      const over = el('div', 'kvm-dead',
+        `<strong>${esc(why)}</strong><br><button class="mini primary">重連</button>`);
+      over.querySelector('button').onclick = () => {
+        over.remove(); entry.win.classList.remove('is-dead');
+        entry.screen.innerHTML = '';
+        kvmStart(entry);
+      };
+      entry.screen.appendChild(over);
+    });
+    rfb.addEventListener('securityfailure', ev => {
+      kvmState(entry, '認證失敗', 'dead');
+    });
+  } catch (e){
+    kvmState(entry, '無法載入 KVM', 'dead');
+    entry.screen.innerHTML = `<div class="kvm-dead"><strong>無法載入 KVM</strong><br>${esc(String(e.message||e))}</div>`;
+  }
+}
+
+function kvmClose(id){
+  const entry = KVM.wins.get(id);
+  if (!entry) return;
+  entry.gone = true;
+  try { entry.rfb && entry.rfb.disconnect(); } catch (e){}
+  entry.win.remove();
+  KVM.wins.delete(id);
+}
+
+function kvmMakeDraggable(entry){
+  const bar = entry.bar;
+  let sx=0, sy=0, ox=0, oy=0, drag=false;
+  bar.addEventListener('pointerdown', e => {
+    if (e.target.closest('.kvm-x')) return;
+    drag = true; sx = e.clientX; sy = e.clientY;
+    const r = entry.win.getBoundingClientRect();
+    ox = r.left; oy = r.top;
+    bar.setPointerCapture(e.pointerId);
+  });
+  bar.addEventListener('pointermove', e => {
+    if (!drag) return;
+    entry.win.style.left = `${Math.max(0, ox + e.clientX - sx)}px`;
+    entry.win.style.top  = `${Math.max(0, oy + e.clientY - sy)}px`;
+  });
+  bar.addEventListener('pointerup', () => { drag = false; });
+}
+
+/* The console is served by the BMC, so an unreachable BMC means no console. */
+function kvmGate(btn, n){
+  const blocked = !n.bmc_up;
+  btn.disabled = blocked;
+  btn.title = blocked
+    ? `${n.name} · BMC (${n.bmc_ip}) 目前無回應，無法開啟 KVM`
+    : `開啟 ${n.name} 的 KVM 主控台（BMC ${n.bmc_ip}）`;
+}
+
 /* ---------- HW/FW inventory ---------- */
 let hwNode = null;
 

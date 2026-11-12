@@ -31,6 +31,7 @@ import inventory as inv
 import rack_flash as flash
 import rack_hw
 import rack_probe as probe
+import rack_kvm
 import rack_term
 
 HERE = Path(__file__).resolve().parent
@@ -167,6 +168,45 @@ class Handler(BaseHTTPRequestHandler):
                                         fmt % args))
 
     # -- helpers ----------------------------------------------------------
+    def _kvm_upgrade(self, url, qs):
+        """Turn this request into a websocket and relay the BMC console."""
+        node = (qs.get('node', [''])[0] or '').strip()
+        key = self.headers.get('Sec-WebSocket-Key', '')
+        if not node:
+            return self._json({'ok': False, 'error': 'node required'}, 400)
+        if not key:
+            return self._json({'ok': False, 'error': 'not a websocket request'}, 400)
+        if inv.lookup_node(node) is None:
+            return self._json({'ok': False, 'error': 'unknown node'}, 404)
+
+        # Fail before upgrading: once the 101 goes out we can only close.
+        try:
+            probe = rack_kvm.connect(node)
+        except Exception as exc:                                 # noqa: BLE001
+            return self._json({'ok': False, 'error': str(exc)}, 502)
+        ws, banner = probe
+
+        self.send_response(101, 'Switching Protocols')
+        self.send_header('Upgrade', 'websocket')
+        self.send_header('Connection', 'Upgrade')
+        self.send_header('Sec-WebSocket-Accept',
+                         rack_kvm.BrowserSocket.accept_key(key))
+        self.end_headers()
+        self.wfile.flush()
+        self.close_connection = True
+
+        browser = rack_kvm.BrowserSocket(self.rfile, self.wfile)
+        try:
+            browser.send(banner)
+            rack_kvm.pump(browser, ws, node)
+        except Exception:                                        # noqa: BLE001
+            pass
+        finally:
+            try:
+                ws.close()
+            except Exception:                                    # noqa: BLE001
+                pass
+
     def _json(self, obj, code=200):
         body = json.dumps(obj, ensure_ascii=False).encode('utf-8')
         self.send_response(code)
@@ -206,6 +246,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url = urlparse(self.path)
         qs = parse_qs(url.query)
+        if url.path == '/api/kvm':
+            return self._kvm_upgrade(url, qs)
         if url.path in ('/', '/index.html'):
             try:
                 data = HTML.read_bytes()
