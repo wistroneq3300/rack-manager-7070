@@ -635,6 +635,52 @@ input:disabled,select:disabled{
 
 /* Launch-a-terminal affordance. Reads as a quiet label until hovered, so the
    address rows keep their original calm rhythm and only light up on intent. */
+/* Tier-a name button: the tray name is the way into its credentials. */
+.tray-name-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  font:inherit;font-weight:600;color:var(--text);
+  background:var(--bg-hover,rgba(255,255,255,.04));
+  border:1px solid var(--border-soft);border-radius:7px;
+  padding:4px 9px;cursor:pointer;text-align:left;line-height:1.2
+}
+.tray-name-btn:hover{border-color:var(--accent);background:var(--accent-bg);
+  color:var(--accent-strong)}
+.tray-name-btn::after{content:"帳密";font-size:9.5px;font-weight:600;
+  letter-spacing:.5px;padding:1px 5px;border-radius:4px;
+  color:var(--text-faint);border:1px solid var(--border-soft);
+  text-transform:uppercase}
+.tray-name-btn:hover::after{color:var(--accent-strong);border-color:var(--accent)}
+
+.cred-modal{width:min(980px,100%)}
+.cred-body{overflow:auto;padding:2px 0 6px}
+.cred-tray{margin:14px 0 8px;font-size:12px;font-weight:600;letter-spacing:.5px;
+  color:var(--text-dim);text-transform:uppercase}
+.cred-grid{display:grid;grid-template-columns:1fr;gap:9px}
+.cred-card{border:1px solid var(--border-soft);border-radius:9px;padding:11px 12px;
+  background:var(--bg-raise,transparent);min-width:0}
+.cred-card-head{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+.cred-card-head span{margin-left:auto}
+.cred-card-head b{font-size:12.5px}
+.cred-card-head span{font-size:11px;color:var(--text-xfaint);
+  font-family:ui-monospace,Menlo,monospace}
+.cred-row{display:grid;grid-template-columns:60px 1fr;gap:8px;align-items:center;
+  margin-top:6px}
+.cred-row label{font-size:10.5px;letter-spacing:.5px;color:var(--text-xfaint);
+  text-transform:uppercase}
+.cred-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:8px}
+.cred-pair input{font:inherit;font-size:12px;padding:5px 7px;border-radius:6px;
+  border:1px solid var(--border-soft);background:var(--bg-input,transparent);
+  color:var(--text);min-width:0;font-family:ui-monospace,Menlo,monospace;
+  letter-spacing:.2px}
+.cred-pair input:focus{outline:none;border-color:var(--accent)}
+.cred-pair .u{grid-column:1}
+.cred-pair .p{grid-column:2}
+.cred-status{flex:1;font-size:11.5px;color:var(--text-faint)}
+.cred-status.ok{color:var(--green)}
+.cred-status.bad{color:var(--red, #e05555)}
+@media (max-width:640px){.cred-pair{grid-template-columns:1fr}}
+@media (max-width:640px){.cred-pair .p{grid-column:1}}
+
 .node-ips .term-btn{
   display:inline-flex;align-items:center;font:inherit;font-size:11px;font-weight:600;
   letter-spacing:.65px;line-height:1;padding:4px 7px;margin:-4px 0 -4px -7px;
@@ -1247,6 +1293,26 @@ button>.ui-icon,.btn-upload>.ui-icon{margin-right:7px}
     <div class="modal-foot">
       <button id="hw-refresh">重新讀取</button>
       <button id="hw-done" class="primary">關閉</button>
+    </div>
+  </div>
+</div>
+
+<!-- Per-node SSH credentials. Separate overlay so editing never touches the
+     power confirmation flow's `pending` state. -->
+<div class="overlay" id="cred-overlay">
+  <div class="modal cred-modal" role="dialog" aria-modal="true" aria-labelledby="cred-title">
+    <div class="hw-head">
+      <div>
+        <h3 id="cred-title">帳號密碼</h3>
+        <div class="hw-sub" id="cred-sub"></div>
+      </div>
+      <button class="hw-close" id="cred-close" aria-label="關閉"><span class="sr-only">關閉</span></button>
+    </div>
+    <div class="cred-body" id="cred-body" aria-live="polite"></div>
+    <div class="modal-foot">
+      <span class="cred-status" id="cred-status"></span>
+      <button id="cred-cancel">關閉</button>
+      <button id="cred-save" class="primary">儲存</button>
     </div>
   </div>
 </div>
@@ -3061,7 +3127,8 @@ async function loadInventoryList(){
       const ips = t.nodes.map(n => n.os_ip);
       tr.innerHTML = `
         <td>${t.tray}</td>
-        <td><b>${esc(t.name)}</b></td>
+        <td><button class="tray-name-btn" data-tray-name="${t.tray}"
+              title="檢視／修改 ${esc(t.name)} 四台的帳號密碼">${esc(t.name)}</button></td>
         <td>${t.nodes.length}</td>
         <td style="font-family:ui-monospace,Menlo,monospace;font-size:11px">
           ${esc(ips[0] || '')}${ips.length > 1 ? ' … ' + esc(ips[ips.length-1]) : ''}</td>
@@ -3084,6 +3151,117 @@ async function loadInventoryList(){
     tb.innerHTML = `<tr><td colspan="5" class="probe-bad">讀取失敗：${esc(String(e))}</td></tr>`;
   }
 }
+
+/* ---------- per-node credentials ----------
+   The tray name in the管理 table opens this. Passwords are shown as stored
+   (plain text) because the operator needs to read them back after changing a
+   password on the node itself — a masked field would hide the stale value. */
+const CRED_KINDS = [
+  ['os', 'OS', 'os_ip', 'os_user', 'os_pass'],
+  ['bmc', 'BMC', 'bmc_ip', 'bmc_user', 'bmc_pass'],
+  ['bf4_os', 'BF4 OS', 'bf4_os_ip', 'bf4_os_user', 'bf4_os_pass'],
+  ['bf4_bmc', 'BF4 BMC', 'bf4_bmc_ip', 'bf4_bmc_user', 'bf4_bmc_pass'],
+];
+let credTray = null;
+
+function closeCred(){
+  document.getElementById('cred-overlay').classList.remove('show');
+  credTray = null;
+}
+
+async function openCred(tray){
+  credTray = tray;
+  const body = document.getElementById('cred-body');
+  const sub = document.getElementById('cred-sub');
+  const status = document.getElementById('cred-status');
+  status.textContent = ''; status.className = 'cred-status';
+  body.innerHTML = '<div class="rack-notice">讀取中…</div>';
+  document.getElementById('cred-overlay').classList.add('show');
+  try {
+    const r = await fetch('/api/tray/creds', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({tray}),
+    });
+    const d = await r.json();
+    if (!d.ok){ body.innerHTML = `<div class="rack-notice">讀取失敗：${esc(d.error || '')}</div>`; return; }
+    sub.textContent = `${d.name} · ${d.nodes.length} 台 · 修改後按「儲存」寫入 inventory.json`;
+    body.innerHTML = '';
+    const grid = el('div', 'cred-grid');
+    d.nodes.forEach(n => {
+      const card = el('div', 'cred-card');
+      const head = el('div', 'cred-card-head',
+        `<b>${esc(n.node || ('slot ' + n.slot))}</b><span>${esc(n.os_ip || '')}</span>`);
+      card.appendChild(head);
+      CRED_KINDS.forEach(([kind, label, ipField, userField, passField]) => {
+        const ip = n[ipField] || '';
+        const row = el('div', 'cred-row');
+        const lab = el('label', '', label);
+        const pair = el('div', 'cred-pair');
+        const u = el('input', 'u');
+        u.value = n[userField] || '';
+        u.placeholder = '（未設定）';
+        u.dataset.slot = n.slot; u.dataset.field = userField;
+        u.setAttribute('aria-label', `${n.slot} ${label} 使用者`);
+        const pw = el('input', 'p');
+        pw.type = 'text';
+        pw.value = n[passField] || '';
+        pw.placeholder = ip ? '（未設定）' : '（無此介面）';
+        pw.dataset.slot = n.slot; pw.dataset.field = passField;
+        pw.setAttribute('aria-label', `${n.slot} ${label} 密碼`);
+        pair.append(u, pw);
+        row.append(lab, pair);
+        card.appendChild(row);
+      });
+      grid.appendChild(card);
+    });
+    body.appendChild(grid);
+  } catch (e){
+    body.innerHTML = `<div class="rack-notice">讀取失敗：${esc(String(e))}</div>`;
+  }
+}
+
+document.addEventListener('click', e => {
+  const nb = e.target.closest('.tray-name-btn');
+  if (nb) openCred(parseInt(nb.dataset.trayName, 10));
+});
+
+document.getElementById('cred-close').onclick = closeCred;
+document.getElementById('cred-cancel').onclick = closeCred;
+document.getElementById('cred-overlay').onclick = e => {
+  if (e.target.id === 'cred-overlay') closeCred();
+};
+
+document.getElementById('cred-save').onclick = async () => {
+  if (credTray === null) return;
+  const btn = document.getElementById('cred-save');
+  const status = document.getElementById('cred-status');
+  const bySlot = new Map();
+  document.querySelectorAll('#cred-body input[data-slot]').forEach(inp => {
+    const slot = parseInt(inp.dataset.slot, 10);
+    if (!bySlot.has(slot)) bySlot.set(slot, {slot});
+    bySlot.get(slot)[inp.dataset.field] = inp.value;
+  });
+  btn.disabled = true;
+  status.className = 'cred-status';
+  status.textContent = '儲存中…';
+  try {
+    const r = await fetch('/api/tray/creds/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({tray: credTray, nodes: [...bySlot.values()]}),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'unknown');
+    status.className = 'cred-status ok';
+    status.textContent = '已儲存，新開的終端會用這組帳密';
+    toast('ok', '帳密已儲存', `Tray ${credTray} · 新連線生效`);
+  } catch (e){
+    status.className = 'cred-status bad';
+    status.textContent = '儲存失敗：' + e.message;
+    toast('err', '儲存失敗', String(e.message || e));
+  } finally {
+    btn.disabled = false;
+  }
+};
 
 // Delegated so dynamically built table rows get the toggle for free.
 document.addEventListener('click', e => {

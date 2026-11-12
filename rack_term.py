@@ -72,9 +72,11 @@ def _resolve(node_name, kind):
         bf4_os, bf4_bmc = inv.bf4_node(node['tray'], node['node'])
         host = bf4_os if kind == 'bf4_os' else bf4_bmc
         if kind == 'bf4_os':
-            user, password = inv.BF4_OS_USER, inv.BF4_OS_PASS
+            user = node.get('bf4_os_user') or inv.BF4_OS_USER
+            password = node.get('bf4_os_pass') or inv.BF4_OS_PASS
         else:
-            user, password = inv.BF4_BMC_USER, inv.BF4_BMC_PASS
+            user = node.get('bf4_bmc_user') or inv.BF4_BMC_USER
+            password = node.get('bf4_bmc_pass') or inv.BF4_BMC_PASS
 
     if not host:
         raise SessionError(f'{node_name} 沒有 {label} 位址')

@@ -325,6 +325,28 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({'ok': True})
             return self._json({'error': 'not found'}, 404)
 
+        if url.path == '/api/tray/creds':
+            tray = body.get('tray')
+            try:
+                tray = int(tray)
+            except (TypeError, ValueError):
+                return self._json({'ok': False, 'error': 'bad tray'}, 400)
+            rows = inv.tray_creds(tray)
+            if not rows:
+                return self._json({'ok': False, 'error': 'unknown tray'}, 404)
+            return self._json({'ok': True, 'tray': tray,
+                               'name': inv.tray_name(tray), 'nodes': rows})
+
+        if url.path == '/api/tray/creds/save':
+            try:
+                tray = int(body.get('tray'))
+            except (TypeError, ValueError):
+                return self._json({'ok': False, 'error': 'bad tray'}, 400)
+            ok, err = inv.set_tray_creds(tray, body.get('nodes') or [])
+            if not ok:
+                return self._json({'ok': False, 'error': err}, 404)
+            return self._json({'ok': True, 'nodes': inv.tray_creds(tray)})
+
         if url.path == '/api/node/power':
             name, action = body.get('node'), body.get('action')
             if not inv.lookup_node(name or ''):
@@ -656,13 +678,16 @@ def _refresh_macs(only=None):
         bf4_os, bf4_bmc = inv.bf4_node(tray, i)
         if bf4_os:
             # DPU OS login, not the host's: the BF4 runs its own image.
-            mac, _ = probe.probe_os_mac(bf4_os, inv.BF4_OS_USER, inv.BF4_OS_PASS)
+            mac, _ = probe.probe_os_mac(
+                bf4_os, node.get('bf4_os_user') or inv.BF4_OS_USER,
+                node.get('bf4_os_pass') or inv.BF4_OS_PASS)
             macs['bf4_os_mac'] = mac or ''
         if bf4_bmc:
             # Straight into the BMC over ssh, as the values it reports for
             # itself; no detour through the DPU OS.
             mac, _ = probe.probe_bf4_bmc_mac(
-                bf4_bmc, inv.BF4_BMC_USER, inv.BF4_BMC_PASS)
+                bf4_bmc, node.get('bf4_bmc_user') or inv.BF4_BMC_USER,
+                node.get('bf4_bmc_pass') or inv.BF4_BMC_PASS)
             macs['bf4_bmc_mac'] = mac or ''
         if os_ip:
             mac, os_why = probe.probe_os_mac(

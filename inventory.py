@@ -272,6 +272,57 @@ def set_node_hostname(tray, index, hostname):
     return True
 
 
+CRED_FIELDS = ('os_user', 'os_pass', 'bmc_user', 'bmc_pass',
+               'bf4_os_user', 'bf4_os_pass', 'bf4_bmc_user', 'bf4_bmc_pass')
+
+
+def tray_creds(tray):
+    """Credentials for every node in a tray, filled from the defaults when a
+    node predates per-node credentials. Returns [] for an unknown tray."""
+    rec = TRAYS.get(tray)
+    if not rec:
+        return []
+    out = []
+    for i, n in enumerate(rec.get('nodes') or []):
+        bf4_os_ip, bf4_bmc_ip = bf4_node(tray, i)
+        out.append({
+            'slot': n.get('slot'),
+            'node': f'{rec["name"]}-n{i}',
+            'os_ip': n['os_ip'], 'bmc_ip': n['bmc_ip'],
+            'bf4_os_ip': bf4_os_ip, 'bf4_bmc_ip': bf4_bmc_ip,
+            'os_user': n.get('os_user', OS_USER),
+            'os_pass': n.get('os_pass', OS_PASS),
+            'bmc_user': n.get('bmc_user', BMC_USER),
+            'bmc_pass': n.get('bmc_pass', BMC_PASS),
+            'bf4_os_user': n.get('bf4_os_user', BF4_OS_USER),
+            'bf4_os_pass': n.get('bf4_os_pass', BF4_OS_PASS),
+            'bf4_bmc_user': n.get('bf4_bmc_user', BF4_BMC_USER),
+            'bf4_bmc_pass': n.get('bf4_bmc_pass', BF4_BMC_PASS),
+        })
+    return out
+
+
+def set_tray_creds(tray, updates):
+    """Apply per-node credential changes. updates is a list of
+    {slot, <field>: <value>} and only the given fields are touched, so a
+    partial edit cannot blank out the rest. Unknown fields are ignored."""
+    with _LOCK:
+        rec = TRAYS.get(tray)
+        if not rec:
+            return False, 'unknown tray'
+        nodes = rec.get('nodes') or []
+        by_slot = {(n.get('slot')): n for n in nodes}
+        for upd in updates or []:
+            node = by_slot.get(upd.get('slot'))
+            if node is None:
+                continue
+            for field in CRED_FIELDS:
+                if field in upd and upd[field] is not None:
+                    node[field] = str(upd[field])
+    save()
+    return True, None
+
+
 def _tray_number(name):
     """'Neutrino13' -> 13; None when the name does not carry a tray number."""
     m = re.fullmatch(r'Neutrino(\d+)', (name or '').strip())
