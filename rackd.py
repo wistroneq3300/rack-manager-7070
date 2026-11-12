@@ -802,8 +802,10 @@ def main(argv=None):
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--host', default='0.0.0.0')
     p.add_argument('--port', type=int, default=7070)
+    p.add_argument('--tls', action='store_true',
+                   help='serve --port over HTTPS instead of plain HTTP')
     p.add_argument('--tls-port', type=int, default=None,
-                   help='serve the same app over TLS on this port as well')
+                   help='also serve TLS on a second port (legacy)')
     p.add_argument('--cert', default=str(HERE / 'tls' / 'cert.pem'))
     p.add_argument('--key', default=str(HERE / 'tls' / 'key.pem'))
     args = p.parse_args(argv)
@@ -813,23 +815,28 @@ def main(argv=None):
         return 2
 
     cert, key = Path(args.cert), Path(args.key)
-    have_tls = args.tls_port and cert.is_file() and key.is_file()
-    if args.tls_port and not have_tls:
-        print(f'WARNING: --tls-port given but {cert} / {key} missing; '
+    tls_ok = cert.is_file() and key.is_file()
+    if (args.tls or args.tls_port) and not tls_ok:
+        print(f'ERROR: TLS requested but {cert} / {key} missing; '
               f'run scripts/make_cert.sh to create them', file=sys.stderr)
+        return 2
 
     flash.load_jobs()          # re-attach to flashes that outlived the last run
-    server = _run_server(args.host, args.port, Handler)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
 
-    print(f'Rack Manager on http://{args.host}:{args.port}  '
-          f'({len(list(inv.nodes()))} nodes, {len(inv.POWER_SHELVES)} power shelves)',
-          flush=True)
-    if have_tls:
+    # The clipboard API needs a secure context, so TLS is the normal mode and
+    # plain HTTP is the opt-out.
+    scheme = 'https' if args.tls else 'http'
+    server = (_run_server(args.host, args.port, Handler, cert, key)
+              if args.tls else _run_server(args.host, args.port, Handler))
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    print(f'Rack Manager on {scheme}://{args.host}:{args.port}  '
+          f'({len(list(inv.nodes()))} nodes, {len(inv.POWER_SHELVES)} power shelves)'
+          + ('  (TLS, clipboard API available)' if args.tls else ''), flush=True)
+
+    if args.tls_port:
         tls = _run_server(args.host, args.tls_port, Handler, cert, key)
         threading.Thread(target=tls.serve_forever, daemon=True).start()
-        print(f'Rack Manager on https://{args.host}:{args.tls_port}  '
-              f'(TLS, clipboard API available)', flush=True)
+        print(f'Rack Manager also on https://{args.host}:{args.tls_port}', flush=True)
 
     try:
         while True:
