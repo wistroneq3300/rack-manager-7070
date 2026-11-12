@@ -632,8 +632,33 @@ input:disabled,select:disabled{
    widened because "BF4 OS" / "BF4 BMC" are the only two-word labels there. */
 .node-ips{grid-template-columns:max-content minmax(0,1fr);gap:5px 10px;line-height:1.45}
 .node-ips .k{font-size:11px;letter-spacing:.65px;color:var(--text-faint);white-space:nowrap}
+
+/* Launch-a-terminal affordance. Reads as a quiet label until hovered, so the
+   address rows keep their original calm rhythm and only light up on intent. */
+.node-ips .term-btn{
+  display:inline-flex;align-items:center;font:inherit;font-size:11px;font-weight:600;
+  letter-spacing:.65px;line-height:1;padding:4px 7px;margin:-4px 0 -4px -7px;
+  border:1px solid transparent;border-radius:6px;background:transparent;
+  color:var(--text-faint);cursor:pointer;text-transform:none
+}
+.node-ips .term-btn::before{
+  content:"";width:5px;height:5px;margin-right:5px;border-radius:50%;
+  background:var(--border);transition:background-color .14s
+}
+.node-ips .term-btn:hover:not(:disabled){
+  border-color:var(--accent);background:var(--accent-bg);color:var(--accent-strong)
+}
+.node-ips .term-btn:hover:not(:disabled)::before{background:var(--accent-strong)}
+.node-ips .term-btn.is-open{
+  border-color:color-mix(in srgb,var(--green) 50%,var(--border));
+  background:var(--green-bg);color:var(--green)
+}
+.node-ips .term-btn.is-open::before{background:var(--green)}
+.node-ips .term-btn:disabled{color:var(--text-xfaint);cursor:not-allowed;opacity:1}
+.node-ips .term-btn:disabled::before{background:var(--dot-off);opacity:.5}
 .node-ips .v{font-size:13px;color:var(--text);line-height:1.45;white-space:normal;overflow-wrap:anywhere;min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .node-ips .bf4-k,.node-ips .bf4-v{padding-top:5px}
+.node-ips .term-btn.bf4-k{padding-top:9px;margin-top:4px}
 .node-ips .bf4-k:first-of-type,.node-ips .bf4-k:first-of-type + .bf4-v{
   margin-top:4px;padding-top:8px;border-top:1px dashed var(--border-soft)}
 .node-ips .bf4-v{color:var(--text-dim)}
@@ -698,6 +723,112 @@ input:disabled,select:disabled{
 .add-row input{min-height:40px;width:220px;font-size:13px}
 .add-defaults{gap:14px;padding:13px 15px;margin-bottom:18px;border-color:var(--border-soft)}
 .add-defaults label{font-size:12px}.add-defaults input{min-height:34px;font-size:12px}
+
+/* ===========================================================================
+   Terminal windows.
+
+   Deliberately NOT a modal: there is no backdrop and nothing sets `inert` on
+   the page, so the rack stays clickable while a shell is open. You can start
+   an OS session, leave it running, and still hit BMC on another node.
+   =========================================================================== */
+.term-layer{position:fixed;inset:0;pointer-events:none;z-index:70}
+.term-win{
+  position:absolute;display:flex;flex-direction:column;pointer-events:auto;
+  min-width:420px;min-height:240px;border:1px solid var(--border);border-radius:12px;
+  background:var(--bg-panel);box-shadow:0 24px 60px rgba(0,0,0,.55),0 0 0 1px rgba(0,0,0,.35);
+  overflow:hidden;animation:termIn .16s ease-out
+}
+@keyframes termIn{from{opacity:0;transform:translateY(6px) scale(.99)}to{opacity:1;transform:none}}
+:root[data-theme="light"] .term-win{box-shadow:0 22px 48px rgba(25,48,56,.22),0 0 0 1px rgba(25,48,56,.08)}
+
+.term-bar{
+  display:flex;align-items:center;gap:10px;min-height:44px;padding:0 8px 0 14px;
+  background:var(--bg-panel-2);border-bottom:1px solid var(--border-soft);
+  cursor:grab;user-select:none;flex:none
+}
+.term-win.is-dragging .term-bar{cursor:grabbing}
+.term-title{display:flex;align-items:baseline;gap:9px;min-width:0;flex:1}
+.term-title .who{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.term-title .kind{
+  font-size:10.5px;font-weight:700;letter-spacing:.6px;padding:2px 7px;border-radius:5px;
+  background:var(--accent-bg);color:var(--accent-strong);
+  border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);flex:none
+}
+.term-title .kind.is-bmc{background:var(--amber-bg);color:var(--amber);
+  border-color:color-mix(in srgb,var(--amber) 42%,transparent)}
+.term-title .addr{font-size:11px;color:var(--text-faint);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.term-dot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--amber);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--amber) 18%,transparent)}
+.term-dot.live{background:var(--green);box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 18%,transparent)}
+.term-dot.dead{background:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 18%,transparent)}
+
+.term-btns{display:flex;align-items:center;gap:2px;flex:none}
+.term-btns button{
+  width:28px;height:28px;min-height:0;padding:0;border:none;border-radius:6px;
+  background:transparent;color:var(--text-faint);display:grid;place-items:center;
+  line-height:1;font-size:15px
+}
+.term-btns button:hover:not(:disabled){background:var(--bg-hover);color:var(--text);border:none}
+.term-btns button.close:hover:not(:disabled){background:var(--red-bg);color:var(--red)}
+.term-btns svg{width:14px;height:14px;stroke:currentColor;fill:none;
+  stroke-width:1.6;stroke-linecap:round}
+
+.term-body{flex:1;min-height:0;padding:8px 4px 4px 10px;background:var(--bg)}
+.term-body .xterm{height:100%}
+.term-body .xterm-viewport{background:transparent!important;scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent}
+.term-body .xterm-viewport::-webkit-scrollbar{width:10px}
+.term-body .xterm-viewport::-webkit-scrollbar-thumb{
+  background:var(--border);border-radius:5px;border:2px solid var(--bg)}
+.term-body .xterm-viewport::-webkit-scrollbar-thumb:hover{background:var(--text-faint)}
+
+.term-foot{
+  display:flex;align-items:center;gap:10px;padding:5px 12px;flex:none;
+  border-top:1px solid var(--border-soft);background:var(--bg-panel-2);
+  font-size:10.5px;color:var(--text-faint);user-select:none
+}
+.term-foot .sep{opacity:.4}
+.term-foot .hint{margin-left:auto;display:flex;gap:8px;align-items:center}
+.term-foot kbd{
+  font:inherit;font-size:10px;padding:1px 5px;border-radius:4px;
+  border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-dim)
+}
+.term-paste{position:relative;display:inline-flex}
+.term-paste button{
+  min-height:0;padding:1px 6px;font-size:10px;border-radius:4px;
+  border:1px solid var(--border-soft);background:var(--bg-panel);color:var(--text-dim)
+}
+.term-paste button:hover:not(:disabled){border-color:var(--accent);color:var(--accent-strong)}
+
+.term-resize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;
+  background:linear-gradient(135deg,transparent 46%,var(--border) 46%,
+    var(--border) 54%,transparent 54%,transparent 64%,var(--border) 64%,var(--border) 72%,transparent 72%)}
+.term-win.is-min .term-body,.term-win.is-min .term-foot,.term-win.is-min .term-resize{display:none}
+.term-win.is-min{min-height:0;height:auto!important}
+.term-win.is-min .term-bar{border-bottom:none}
+
+.term-dead{
+  padding:14px 16px;font-size:12.5px;line-height:1.6;color:var(--text-dim);
+  background:var(--red-bg);border-top:1px solid color-mix(in srgb,var(--red) 35%,var(--border-soft))
+}
+.term-dead strong{color:var(--red);font-weight:650}
+
+/* Dock of minimised windows plus the live-session counter. */
+.term-dock{
+  position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:72;
+  display:flex;gap:6px;align-items:center;padding:6px;border-radius:11px;
+  border:1px solid var(--border);background:var(--bg-panel-2);
+  box-shadow:var(--shadow-lg);pointer-events:auto
+}
+.term-dock:empty{display:none}
+.term-dock button{
+  display:inline-flex;align-items:center;gap:7px;min-height:28px;padding:4px 10px;
+  font-size:11.5px;border-radius:7px;border:1px solid var(--border-soft);
+  background:var(--bg-panel);color:var(--text-dim)
+}
+.term-dock button:hover{border-color:var(--accent);color:var(--accent-strong)}
 .add-table{font-size:13px;margin-bottom:16px}
 .add-table th{padding:9px 10px;font-size:11px;color:var(--text-dim)}
 .add-table td{padding:8px 10px}.add-table td input{min-height:35px;font-size:12.5px}
@@ -821,6 +952,7 @@ button>.ui-icon,.btn-upload>.ui-icon{margin-right:7px}
 .btn-upload:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 .rack-notice{color:var(--text-dim);padding:18px;border:1px solid var(--border);border-radius:8px}
 </style>
+<link rel="stylesheet" href="/static/vendor/xterm/xterm.css">
 </head>
 <body>
 <div class="layout">
@@ -1053,6 +1185,8 @@ button>.ui-icon,.btn-upload>.ui-icon{margin-right:7px}
   </div>
 </div>
 
+<script src="/static/vendor/xterm/xterm.js"></script>
+<script src="/static/vendor/xterm/addon-fit.js"></script>
 <script>
 // Authored local SVG paths: one 24px line vocabulary, no remote dependency.
 const UI_ICONS = {
@@ -1141,6 +1275,8 @@ function applyTheme(mode){
   btn.title = light ? '目前為淺色模式，切換至深色模式' : '目前為深色模式，切換至淺色模式';
   btn.setAttribute('aria-label', btn.title);
   btn.setAttribute('aria-pressed', String(light));
+  // Open shells keep their own colours; xterm themes are not CSS.
+  if (typeof termRepaintTheme === 'function') termRepaintTheme();
 }
 applyTheme(localStorage.getItem('rack-theme') || 'dark');
 document.getElementById('theme-toggle').onclick = () =>
@@ -1333,12 +1469,20 @@ function render(data){
       const bf4Cell = (ip, up, mac) => `<span class="v bf4-v">${bf4Addr(ip, up)}`
         + (mac ? `<span class="mac">${esc(mac)}</span>` : '') + `</span>`;
 
+      // The label column doubles as the terminal launcher: click a target
+      // name and an SSH window opens for it. The address stays plain text so
+      // it never competes with the button for attention.
+      const termBtn = (kind, label, extraClass) =>
+        `<button class="k term-btn ${extraClass || ''}" data-term-node="${esc(n.name)}"`
+        + ` data-term-kind="${kind}" title="開啟 ${esc(n.name)} · ${label} 終端">`
+        + `<span>${label}</span></button>`;
+
       cell.appendChild(el('div', 'node-ips',
-        `<span class="k">OS</span>${ipCell(esc(n.os_ip), n.os_mac)}
-         <span class="k">BMC</span>${ipCell(esc(n.bmc_ip), n.bmc_mac)}`
+        termBtn('os', 'OS') + ipCell(esc(n.os_ip), n.os_mac)
+        + termBtn('bmc', 'BMC') + ipCell(esc(n.bmc_ip), n.bmc_mac)
         + (n.bf4_os_ip || n.bf4_bmc_ip
-          ? `<span class="k bf4-k">BF4 OS</span>${bf4Cell(n.bf4_os_ip, n.bf4_os_up, n.bf4_os_mac)}
-             <span class="k bf4-k">BF4 BMC</span>${bf4Cell(n.bf4_bmc_ip, n.bf4_bmc_up, n.bf4_bmc_mac)}`
+          ? termBtn('bf4_os', 'BF4 OS', 'bf4-k') + bf4Cell(n.bf4_os_ip, n.bf4_os_up, n.bf4_os_mac)
+            + termBtn('bf4_bmc', 'BF4 BMC', 'bf4-k') + bf4Cell(n.bf4_bmc_ip, n.bf4_bmc_up, n.bf4_bmc_mac)
           : '')));
       // Only worth a row when it disagrees with the name this card already
       // shows. A node that names itself "localhost-n3" is the case that
@@ -3203,8 +3347,586 @@ macBtn.onclick = async () => {
   }
 };
 
+/* ===========================================================================
+   Terminal windows
+
+   Non-modal by design: the layer below is pointer-events:none and nothing on
+   the page is made inert, so a running shell never blocks the rack. Click a
+   second target and it simply stacks — same as opening two tabs in Moba.
+
+   Clipboard follows Moba's habits: select-to-copy, double-click a word,
+   right-click to paste. Right-click paste only reaches the clipboard intact
+   over https (navigator.clipboard is gated on a secure context), so over plain
+   http it falls back to the paste button / Ctrl+V.
+   =========================================================================== */
+var TERM = {
+  wins: new Map(),          // sid -> {win, term, fit, node, kind, label, ...}
+  layer: null,
+  dock: null,
+  z: 80,
+  openKeys: new Set(),      // `${node}|${kind}` currently open, for button state
+  zseq: 0,
+};
+
+var TERM_THEME = () => {
+  const dark = document.documentElement.dataset.theme !== 'light';
+  return dark
+    ? { background:'#0b1015', foreground:'#edf3f3', cursor:'#62b9b3', cursorAccent:'#0b1015',
+        selectionBackground:'rgba(98,185,179,.30)',
+        black:'#1c272f', red:'#e18787', green:'#70c697', yellow:'#d7b36d',
+        blue:'#7db4d8', magenta:'#c9a3e0', cyan:'#62b9b3', white:'#edf3f3',
+        brightBlack:'#5b6b73', brightRed:'#f0a5a5', brightGreen:'#8ed8ae',
+        brightYellow:'#e8c887', brightBlue:'#9cc9e6', brightMagenta:'#d9bdec',
+        brightCyan:'#85cbc6', brightWhite:'#ffffff' }
+    : { background:'#fbfcfc', foreground:'#17282e', cursor:'#176f75', cursorAccent:'#fbfcfc',
+        selectionBackground:'rgba(23,111,117,.22)',
+        black:'#17282e', red:'#a13e3e', green:'#287249', yellow:'#855d16',
+        blue:'#1f5d8a', magenta:'#70469a', cyan:'#176f75', white:'#d2dde0',
+        brightBlack:'#526970', brightRed:'#c45252', brightGreen:'#2f8a56',
+        brightYellow:'#a5721c', brightBlue:'#2a76aa', brightMagenta:'#8a5cb8',
+        brightCyan:'#0f5c62', brightWhite:'#405860' };
+};
+
+const b64encode = bytes => {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000)
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+};
+const b64decode = str => {
+  const bin = atob(str || '');
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+};
+
+function termEnsureLayer(){
+  if (TERM.layer) return;
+  TERM.layer = el('div', 'term-layer');
+  document.body.appendChild(TERM.layer);
+  TERM.dock = el('div', 'term-dock');
+  document.body.appendChild(TERM.dock);
+}
+
+/* ---------- clipboard ----------
+   execCommand('copy') works everywhere; the async API needs a secure context.
+   We try the modern one first and silently degrade to the old one. */
+async function clipWrite(text){
+  try {
+    if (navigator.clipboard && window.isSecureContext){
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e){ /* fall through */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-1000px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch (e){ return false; }
+}
+
+async function clipRead(){
+  try {
+    if (navigator.clipboard && window.isSecureContext){
+      return await navigator.clipboard.readText();
+    }
+  } catch (e){ /* permission denied -> report below */ }
+  return null;
+}
+
+function termPasteInto(entry, text){
+  if (text == null || !text.length) return;
+  entry.sendRaw(text);
+  entry.term.focus();
+}
+
+async function termPaste(entry){
+  const text = await clipRead();
+  if (text == null){
+    toast('info', '需要 https 才能直接讀剪貼簿',
+      '目前是 http，請用 Ctrl+Shift+V 或下方「貼上」按鈕');
+    return;
+  }
+  termPasteInto(entry, text);
+}
+
+function termButtonState(node, kind, open){
+  const sel = `.term-btn[data-term-node="${CSS.escape(node)}"][data-term-kind="${kind}"]`;
+  document.querySelectorAll(sel).forEach(b => b.classList.toggle('is-open', open));
+}
+
+/* ---------- drag + resize ---------- */
+function termMakeDraggable(win, handle){
+  let sx = 0, sy = 0, ox = 0, oy = 0, dragging = false;
+  handle.addEventListener('pointerdown', e => {
+    if (e.target.closest('.term-btns')) return;
+    dragging = true;
+    win.classList.add('is-dragging');
+    const r = win.getBoundingClientRect();
+    ox = r.left; oy = r.top; sx = e.clientX; sy = e.clientY;
+    win.style.left = ox + 'px'; win.style.top = oy + 'px';
+    win.style.right = 'auto'; win.style.bottom = 'auto';
+    handle.setPointerCapture(e.pointerId);
+  });
+  handle.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const w = win.offsetWidth, h = win.offsetHeight;
+    let nx = Math.max(4, Math.min(ox + e.clientX - sx, window.innerWidth - w - 4));
+    let ny = Math.max(4, Math.min(oy + e.clientY - sy, window.innerHeight - 44));
+    win.style.left = nx + 'px';
+    win.style.top = ny + 'px';
+  });
+  const stop = e => {
+    if (!dragging) return;
+    dragging = false;
+    win.classList.remove('is-dragging');
+    try { handle.releasePointerCapture(e.pointerId); } catch (_){}
+  };
+  handle.addEventListener('pointerup', stop);
+  handle.addEventListener('pointercancel', stop);
+}
+
+function termMakeResizable(win, grab, entry){
+  let sx = 0, sy = 0, sw = 0, sh = 0, resizing = false;
+  grab.addEventListener('pointerdown', e => {
+    e.stopPropagation();
+    resizing = true;
+    const r = win.getBoundingClientRect();
+    sw = r.width; sh = r.height; sx = e.clientX; sy = e.clientY;
+    grab.setPointerCapture(e.pointerId);
+  });
+  grab.addEventListener('pointermove', e => {
+    if (!resizing) return;
+    const w = Math.max(420, sw + e.clientX - sx);
+    const h = Math.max(240, sh + e.clientY - sy);
+    win.style.width = w + 'px';
+    win.style.height = h + 'px';
+    entry.fit && entry.fit.fit();
+  });
+  const stop = e => {
+    if (!resizing) return;
+    resizing = false;
+    try { grab.releasePointerCapture(e.pointerId); } catch (_){}
+    entry.fit && entry.fit.fit();
+  };
+  grab.addEventListener('pointerup', stop);
+  grab.addEventListener('pointercancel', stop);
+}
+
+/* ---------- window construction ---------- */
+function termBuildWindow(entry){
+  const { sid, node, kind, label, host, user } = entry;
+  const win = el('div', 'term-win');
+  win.style.width = '760px';
+  win.style.height = '440px';
+
+  const kindLabel = {os:'OS', bmc:'BMC', bf4_os:'BF4 OS', bf4_bmc:'BF4 BMC'}[kind] || kind;
+  const isBmc = kind === 'bmc' || kind === 'bf4_bmc';
+
+  const bar = el('div', 'term-bar');
+  bar.innerHTML = `
+    <span class="term-dot" data-role="dot"></span>
+    <div class="term-title">
+      <span class="kind ${isBmc ? 'is-bmc' : ''}">${esc(kindLabel)}</span>
+      <span class="who">${esc(node)}</span>
+      <span class="addr">${esc(user)}@${esc(host)}</span>
+    </div>
+    <div class="term-btns">
+      <button data-act="paste" title="貼上（右鍵）" aria-label="貼上">
+        <svg viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M7 6H5v15h14V6h-2"/></svg>
+      </button>
+      <button data-act="copy" title="複製選取（雙擊選詞）" aria-label="複製">
+        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M5 15V5a1 1 0 0 1 1-1h9"/></svg>
+      </button>
+      <button data-act="min" title="最小化" aria-label="最小化">
+        <svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
+      </button>
+      <button data-act="close" class="close" title="關閉" aria-label="關閉">
+        <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>`;
+  win.appendChild(bar);
+
+  const body = el('div', 'term-body');
+  win.appendChild(body);
+
+  const foot = el('div', 'term-foot');
+  foot.innerHTML = `
+    <span data-role="state">連線中…</span>
+    <span class="sep">·</span>
+    <span data-role="size">—</span>
+    <span class="hint">
+      <span class="term-paste"><button data-act="paste2" title="從剪貼簿貼上">貼上</button></span>
+      <span>雙擊選詞</span><span class="sep">·</span>
+      <span>右鍵貼上</span><span class="sep">·</span>
+      <span><kbd>Shift</kbd>+<kbd>Ctrl</kbd>+<kbd>C/V</kbd></span>
+    </span>`;
+  win.appendChild(foot);
+
+  const rz = el('div', 'term-resize');
+  win.appendChild(rz);
+
+  TERM.layer.appendChild(win);
+  entry.win = win;
+  entry.foot = foot;
+  entry.bar = bar;
+  entry.dot = bar.querySelector('[data-role="dot"]');
+  entry.stateEl = foot.querySelector('[data-role="state"]');
+  entry.sizeEl = foot.querySelector('[data-role="size"]');
+
+  /* xterm */
+  const term = new Terminal({
+    fontFamily:'"JetBrains Mono","Cascadia Mono","SF Mono",Consolas,"DejaVu Sans Mono",monospace',
+    fontSize:13,
+    lineHeight:1.32,
+    letterSpacing:0,
+    cursorBlink:true,
+    cursorStyle:'bar',
+    scrollback:5000,
+    allowProposedApi:true,
+    theme:TERM_THEME(),
+    macOptionIsMeta:true,
+    rightClickSelectsWord:false,
+  });
+  entry.term = term;
+  const fit = new FitAddon.FitAddon();
+  entry.fit = fit;
+  term.loadAddon(fit);
+  term.open(body);
+  entry.ready = true;
+  requestAnimationFrame(() => {
+    try { fit.fit(); } catch (e){}
+    term.focus();
+    termResize(entry);
+  });
+
+  /* --- Moba-style clipboard --- */
+
+  // Drag-select then release copies, like MobaXterm.
+  term.onSelectionChange(() => {
+    const sel = term.getSelection();
+    if (sel) clipWrite(sel);
+  });
+
+  // Double-click already selects a word in xterm; make that copy too by
+  // forcing a selection change notification on mouseup.
+  body.addEventListener('mouseup', () => {
+    const sel = term.getSelection();
+    if (sel) clipWrite(sel);
+  });
+
+  // Right click pastes. Prevent the browser menu from eating it.
+  body.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    termPaste(entry);
+  });
+
+  // Ctrl+Shift+C/V (Moba/terminal convention) and Shift+Insert.
+  term.attachCustomKeyEventHandler(ev => {
+    if (ev.type !== 'keydown') return true;
+    const k = ev.key.toLowerCase();
+    if (ev.ctrlKey && ev.shiftKey && k === 'c'){
+      const sel = term.getSelection();
+      if (sel) clipWrite(sel);
+      return false;
+    }
+    if (ev.ctrlKey && ev.shiftKey && k === 'v'){
+      termPaste(entry);
+      return false;
+    }
+    if (ev.shiftKey && ev.key === 'Insert'){
+      termPaste(entry);
+      return false;
+    }
+    if (ev.ctrlKey && ev.key === 'Insert'){
+      const sel = term.getSelection();
+      if (sel) clipWrite(sel);
+      return false;
+    }
+    return true;
+  });
+
+  term.onData(d => entry.sendRaw(d));
+  term.onResize(({cols, rows}) => {
+    entry.sizeEl.textContent = `${cols}×${rows}`;
+    termPushResize(entry, cols, rows);
+  });
+
+  // Paste events that reach the textarea (Ctrl+V without our handler).
+  body.addEventListener('paste', e => {
+    const text = e.clipboardData && e.clipboardData.getData('text');
+    if (text){
+      e.preventDefault();
+      e.stopPropagation();
+      termPasteInto(entry, text);
+    }
+  });
+
+  /* buttons */
+  bar.querySelector('[data-act="close"]').onclick = () => termClose(entry);
+  bar.querySelector('[data-act="min"]').onclick = () => termMinimize(entry, true);
+  bar.querySelector('[data-act="paste"]').onclick = () => termPaste(entry);
+  bar.querySelector('[data-act="copy"]').onclick = () => {
+    const sel = term.getSelection();
+    if (sel) clipWrite(sel);
+    else toast('info', '沒有選取內容', '拖曳或雙擊選取後再複製');
+  };
+  foot.querySelector('[data-act="paste2"]').onclick = () => termPaste(entry);
+
+  // Minimise / restore by clicking the title bar of a docked window.
+  bar.addEventListener('dblclick', e => {
+    if (e.target.closest('.term-btns')) return;
+    termMinimize(entry, !win.classList.contains('is-min'));
+  });
+
+  win.addEventListener('pointerdown', () => termRaise(entry), true);
+
+  termMakeDraggable(win, bar);
+  termMakeResizable(win, rz, entry);
+  return win;
+}
+
+function termPlace(entry){
+  const n = TERM.wins.size - 1;
+  const w = 760, h = 440;
+  const gap = 26;
+  const x = 60 + (n % 5) * gap;
+  const y = 70 + (n % 5) * gap;
+  const maxX = Math.max(8, window.innerWidth - w - 24);
+  const maxY = Math.max(8, window.innerHeight - 120);
+  entry.win.style.left = Math.min(x, maxX) + 'px';
+  entry.win.style.top = Math.min(y, maxY) + 'px';
+}
+
+function termRaise(entry){
+  entry.win.style.zIndex = ++TERM.z;
+}
+
+function termMinimize(entry, yes){
+  entry.win.classList.toggle('is-min', yes);
+  if (!yes){
+    termRaise(entry);
+    requestAnimationFrame(() => {
+      try { entry.fit.fit(); } catch (e){}
+      entry.term.focus();
+    });
+  } else {
+    entry.win.style.zIndex = 1;
+  }
+  termRenderDock();
+}
+
+function termRenderDock(){
+  const dock = TERM.dock;
+  if (!dock) return;
+  dock.innerHTML = '';
+  for (const entry of TERM.wins.values()){
+    if (!entry.win.classList.contains('is-min')) continue;
+    const b = el('button', '', `<span class="term-dot ${entry.alive === false ? 'dead' : 'live'}"></span>`
+      + `${esc(entry.node)} · ${esc(entry.label)}`);
+    b.onclick = () => termMinimize(entry, false);
+    dock.appendChild(b);
+  }
+}
+
+/* ---------- transport ---------- */
+function termResize(entry){
+  try { entry.fit.fit(); } catch (e){}
+}
+
+let resizeTimer = null;
+function termPushResize(entry, cols, rows){
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    fetch(`/api/term/${entry.sid}/resize`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({cols, rows}),
+    }).catch(() => {});
+  }, 180);
+}
+
+function termSetState(entry, text, dotClass){
+  if (!entry.stateEl) return;
+  entry.stateEl.textContent = text;
+  entry.dot.className = 'term-dot ' + (dotClass || '');
+}
+
+async function termStream(entry){
+  let after = 0;
+  while (!entry.gone){
+    try {
+      const r = await fetch(`/api/term/${entry.sid}/stream?after=${after}`, {cache:'no-store'});
+      if (!r.ok){
+        const j = await r.json().catch(() => ({}));
+        termDie(entry, j.error || `HTTP ${r.status}`);
+        return;
+      }
+      const j = await r.json();
+      after = j.offset;
+      if (j.data){
+        entry.term.write(b64decode(j.data));
+        if (entry.alive !== true){
+          entry.alive = true;
+          termSetState(entry, '已連線', 'live');
+        }
+      }
+      if (j.closed){
+        if (entry.alive !== true) termSetState(entry, '已連線', 'live');
+        termDie(entry, j.reason || '連線已結束');
+        return;
+      }
+    } catch (e){
+      if (entry.gone) return;
+      await new Promise(r => setTimeout(r, 700));
+    }
+  }
+}
+
+function termDie(entry, reason){
+  entry.gone = true;
+  entry.alive = false;
+  entry.win.classList.add('is-dead');
+  termSetState(entry, '已中斷', 'dead');
+  entry.dot.className = 'term-dot dead';
+  entry.term.write(`\r\n\x1b[38;5;203m── 連線結束：${reason} ──\x1b[0m\r\n`);
+  const dead = el('div', 'term-dead',
+    `<strong>連線結束</strong> — ${esc(reason)}<br>`
+    + `可關閉此視窗，或按下方「重連」重新建立 session。`);
+  const again = el('button', 'mini', '重連');
+  again.style.marginTop = '8px';
+  again.onclick = () => {
+    termClose(entry, {silent:true});
+    termOpen(entry.node, entry.kind);
+  };
+  dead.appendChild(again);
+  entry.win.appendChild(dead);
+  termRenderDock();
+}
+
+/* ---------- open / close ---------- */
+async function termOpen(node, kind, btn){
+  termEnsureLayer();
+  const key = `${node}|${kind}`;
+  if (TERM.openKeys.has(key)){
+    // Already open: raise and focus the existing one instead of duplicating.
+    for (const entry of TERM.wins.values()){
+      if (entry.node === node && entry.kind === kind){
+        if (entry.win.classList.contains('is-min')) termMinimize(entry, false);
+        termRaise(entry);
+        entry.term.focus();
+        return;
+      }
+    }
+  }
+
+  const entry = { node, kind, label: '', host: '', user: '', sid: null, gone: false };
+  try {
+    const res = await fetch('/api/term/open', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({node, kind}),
+    });
+    const j = await res.json();
+    if (!j.ok){
+      toast('err', `${node} · ${kind} 無法開啟`, j.error || '未知錯誤');
+      return;
+    }
+    entry.sid = j.sid;
+    entry.label = j.label;
+    entry.host = j.host;
+    entry.user = j.user;
+  } catch (e){
+    toast('err', `${node} · ${kind} 無法開啟`, String(e));
+    return;
+  }
+
+  // Batching keystrokes keeps a fast typist from opening one request per key.
+  let pending = [], flushTimer = null;
+  entry.sendRaw = (text) => {
+    if (entry.gone || !text) return;
+    pending.push(new TextEncoder().encode(text));
+    if (!flushTimer) flushTimer = setTimeout(flushPending, 12);
+  };
+  const flushPending = () => {
+    flushTimer = null;
+    if (!pending.length || entry.gone) return;
+    const merged = new Uint8Array(pending.reduce((n, a) => n + a.length, 0));
+    let o = 0;
+    for (const a of pending){ merged.set(a, o); o += a.length; }
+    pending = [];
+    fetch(`/api/term/${entry.sid}/input`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({data: b64encode(merged)}),
+    }).catch(() => {});
+  };
+
+  termBuildWindow(entry);
+  TERM.wins.set(entry.sid, entry);
+  TERM.openKeys.add(key);
+  termPlace(entry);
+  termRaise(entry);
+  termSetState(entry, '連線中…', '');
+  termButtonState(node, kind, true);
+  termStream(entry);
+  document.dispatchEvent(new CustomEvent('term:changed'));
+}
+
+function termClose(entry, opts){
+  const silent = opts && opts.silent;
+  entry.gone = true;
+  if (entry.sid){
+    fetch(`/api/term/${entry.sid}/close`, {method:'POST',
+      headers:{'Content-Type':'application/json'}, body:'{}'}).catch(() => {});
+    TERM.wins.delete(entry.sid);
+  }
+  TERM.openKeys.delete(`${entry.node}|${entry.kind}`);
+  try { entry.term.dispose(); } catch (e){}
+  entry.win.remove();
+  if (!silent) termButtonState(entry.node, entry.kind, false);
+  termRenderDock();
+  document.dispatchEvent(new CustomEvent('term:changed'));
+}
+
+/* Theme flips need every open terminal repainted; xterm themes are not CSS. */
+function termRepaintTheme(){
+  // applyTheme() runs at load, before TERM exists; that first call has nothing
+  // to repaint anyway.
+  if (!TERM || !TERM.wins) return;
+  for (const entry of TERM.wins.values()){
+    try { entry.term.options.theme = TERM_THEME(); } catch (e){}
+  }
+}
+
+/* Delegated launcher: the address rows are re-rendered on every poll, so the
+   handler lives on the document rather than on each button. */
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.term-btn');
+  if (!btn || btn.disabled) return;
+  e.preventDefault();
+  termOpen(btn.dataset.termNode, btn.dataset.termKind, btn);
+});
+
+window.addEventListener('resize', () => {
+  for (const entry of TERM.wins.values()){
+    if (!entry.win.classList.contains('is-min')){ try { entry.fit.fit(); } catch (e){} }
+  }
+});
+
+// Mark buttons whose session outlived a re-render.
+document.addEventListener('term:changed', () => {
+  document.querySelectorAll('.term-btn').forEach(b => {
+    b.classList.toggle('is-open', TERM.openKeys.has(`${b.dataset.termNode}|${b.dataset.termKind}`));
+  });
+});
+
 refresh();
 setInterval(refresh, 20000);
+
 </script>
 </body>
 </html>

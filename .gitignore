@@ -12,3 +12,6 @@ fw/*
 # vendor scripts pushed to nodes (Wistron-internal, never commit)
 vendor/*
 !vendor/.gitkeep
+tls/
+.venv-test/
+.preview_term.png

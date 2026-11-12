@@ -31,6 +31,7 @@ import inventory as inv
 import rack_flash as flash
 import rack_hw
 import rack_probe as probe
+import rack_term
 
 HERE = Path(__file__).resolve().parent
 HTML = HERE / 'index.html'
@@ -242,7 +243,41 @@ class Handler(BaseHTTPRequestHandler):
                 'shelves': inv.POWER_SHELVES,
                 'detail': detail,
             })
+        if url.path == '/api/term/probe':
+            name = qs.get('node', [''])[0]
+            seen = []
+            for kind in rack_term.KINDS:
+                try:
+                    host, label, _u, _p = rack_term._resolve(name, kind)
+                except rack_term.SessionError as exc:
+                    seen.append({'kind': kind, 'ok': False, 'error': str(exc)})
+                    continue
+                seen.append({'kind': kind, 'host': host, 'label': label,
+                             'ok': rack_term.reachable(host)})
+            return self._json({'ok': True, 'targets': seen})
+
+        if url.path.startswith('/api/term/') and url.path.endswith('/stream'):
+            sid = url.path[len('/api/term/'):-len('/stream')]
+            after = int(qs.get('after', ['0'])[0] or 0)
+            return self._term_stream(sid, after)
+
         return self._json({'error': 'not found'}, 404)
+
+    def _term_stream(self, sid, after):
+        """Long-poll: hold the request until output arrives or POLL_HOLD ends."""
+        try:
+            session = rack_term.REGISTRY.get(sid)
+        except rack_term.SessionError as exc:
+            return self._json({'ok': False, 'closed': True, 'error': str(exc)}, 404)
+        data, offset = session.read(after)
+        payload = {
+            'ok': True,
+            'data': base64.b64encode(data).decode('ascii'),
+            'offset': offset,
+            'closed': not session.alive,
+            'reason': session.closed_reason,
+        }
+        self._json(payload)
 
     def do_POST(self):
         url = urlparse(self.path)
@@ -250,6 +285,39 @@ class Handler(BaseHTTPRequestHandler):
         body = self._body()
         dry = qs.get('dry_run', ['0'])[0] in ('1', 'true')
         token = qs.get('token', [''])[0]
+
+        if url.path == '/api/term/open':
+            try:
+                session = rack_term.REGISTRY.open(body.get('node') or '',
+                                                  body.get('kind') or '')
+            except rack_term.SessionError as exc:
+                return self._json({'ok': False, 'error': str(exc)}, 400)
+            return self._json({'ok': True, 'sid': session.sid,
+                               'label': session.label, 'host': session.host,
+                               'user': session.user,
+                               'live': rack_term.REGISTRY.live_count()})
+
+        if url.path.startswith('/api/term/'):
+            rest = url.path[len('/api/term/'):]
+            sid, _, what = rest.partition('/')
+            try:
+                session = rack_term.REGISTRY.get(sid)
+            except rack_term.SessionError as exc:
+                return self._json({'ok': False, 'error': str(exc)}, 404)
+            if what == 'input':
+                raw = body.get('data') or ''
+                try:
+                    session.write(base64.b64decode(raw))
+                except (ValueError, binascii.Error):
+                    return self._json({'ok': False, 'error': 'bad payload'}, 400)
+                return self._json({'ok': True})
+            if what == 'resize':
+                session.resize(body.get('cols'), body.get('rows'))
+                return self._json({'ok': True})
+            if what == 'close':
+                rack_term.REGISTRY.close(sid)
+                return self._json({'ok': True})
+            return self._json({'error': 'not found'}, 404)
 
         if url.path == '/api/node/power':
             name, action = body.get('node'), body.get('action')
@@ -707,25 +775,59 @@ def _resolve_targets(targets):
     return [], f'unknown mode {mode!r}'
 
 
+def _ssl_context(cert, key):
+    import ssl
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(str(cert), str(key))
+    return ctx
+
+
+def _run_server(host, port, handler, cert=None, key=None):
+    server = ThreadingHTTPServer((host, port), handler)
+    server.daemon_threads = True
+    if cert and key:
+        server.socket = _ssl_context(cert, key).wrap_socket(
+            server.socket, server_side=True)
+    return server
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument('--host', default='0.0.0.0')
     p.add_argument('--port', type=int, default=7070)
+    p.add_argument('--tls-port', type=int, default=None,
+                   help='serve the same app over TLS on this port as well')
+    p.add_argument('--cert', default=str(HERE / 'tls' / 'cert.pem'))
+    p.add_argument('--key', default=str(HERE / 'tls' / 'key.pem'))
     args = p.parse_args(argv)
 
     if not HTML.is_file():
         print(f'ERROR: {HTML} is missing', file=sys.stderr)
         return 2
 
+    cert, key = Path(args.cert), Path(args.key)
+    have_tls = args.tls_port and cert.is_file() and key.is_file()
+    if args.tls_port and not have_tls:
+        print(f'WARNING: --tls-port given but {cert} / {key} missing; '
+              f'run scripts/make_cert.sh to create them', file=sys.stderr)
+
     flash.load_jobs()          # re-attach to flashes that outlived the last run
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
-    server.daemon_threads = True
+    server = _run_server(args.host, args.port, Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+
     print(f'Rack Manager on http://{args.host}:{args.port}  '
           f'({len(list(inv.nodes()))} nodes, {len(inv.POWER_SHELVES)} power shelves)',
           flush=True)
+    if have_tls:
+        tls = _run_server(args.host, args.tls_port, Handler, cert, key)
+        threading.Thread(target=tls.serve_forever, daemon=True).start()
+        print(f'Rack Manager on https://{args.host}:{args.tls_port}  '
+              f'(TLS, clipboard API available)', flush=True)
+
     try:
-        server.serve_forever()
+        while True:
+            time.sleep(3600)
     except KeyboardInterrupt:
         print('\nstopped', flush=True)
     finally:
