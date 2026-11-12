@@ -636,22 +636,20 @@ input:disabled,select:disabled{
 /* Launch-a-terminal affordance. Reads as a quiet label until hovered, so the
    address rows keep their original calm rhythm and only light up on intent. */
 /* KVM sits under HW/FW as the second node-level tool. */
+/* Same box as HW/FW, parked under it and right-aligned to match: the two are
+   one pair of node-level tools, not a full-width control. */
 .node > .kvm-btn{
   display:inline-flex;align-items:center;justify-content:center;
-  font:inherit;font-size:9.5px;font-weight:700;letter-spacing:.4px;
-  padding:3px 8px;min-height:24px;margin:3px 0 0;border-radius:6px;
-  border:1px solid var(--border-soft);background:transparent;
-  color:var(--text-faint);cursor:pointer;text-transform:uppercase
+  font-family:inherit;font-size:11px;font-weight:700;letter-spacing:.35px;
+  padding:3px 8px;min-height:28px;margin:3px 0 0 auto;border-radius:6px;
+  border:1px solid var(--border);background:var(--bg-panel-2);
+  color:var(--text-dim);cursor:pointer;line-height:1.5
 }
 .node > .kvm-btn:hover:not(:disabled){
   border-color:var(--accent);background:var(--accent-bg);color:var(--accent-strong)
 }
-.node > .kvm-btn.is-open{
-  border-color:color-mix(in srgb,var(--green) 50%,var(--border));
-  background:var(--green-bg);color:var(--green)
-}
 .node > .kvm-btn:disabled{color:var(--text-xfaint);cursor:not-allowed;
-  border-color:var(--border-soft)}
+  border-color:var(--border-soft);background:transparent}
 
 /* Tier-a name button: the tray name is the way into its credentials. */
 .tray-name-btn{
@@ -672,7 +670,7 @@ input:disabled,select:disabled{
 /* ---------- KVM console windows ----------
    Floating, not modal: the rack stays usable while a console is open. */
 #kvm-layer{position:fixed;inset:0;pointer-events:none;z-index:60}
-.kvm-win{position:fixed;pointer-events:auto;width:min(560px,calc(100vw - 24px));
+.kvm-win{position:fixed;pointer-events:auto;width:560px;max-width:calc(100vw - 24px);
   background:var(--bg-panel,#141821);border:1px solid var(--border);
   border-radius:10px;box-shadow:0 18px 48px rgba(0,0,0,.55);overflow:hidden;
   display:flex;flex-direction:column}
@@ -687,12 +685,6 @@ input:disabled,select:disabled{
 .kvm-dot.connecting{background:var(--accent);animation:kvmPulse 1s infinite}
 .kvm-dot.dead{background:var(--red,#e05555)}
 @keyframes kvmPulse{50%{opacity:.35}}
-.kvm-x{width:20px;height:20px;border-radius:5px;border:1px solid transparent;
-  background:transparent;cursor:pointer;position:relative;flex:none}
-.kvm-x::before,.kvm-x::after{content:"";position:absolute;left:50%;top:50%;
-  width:11px;height:1.5px;background:var(--text-faint);border-radius:2px}
-.kvm-x::before{transform:translate(-50%,-50%) rotate(45deg)}
-.kvm-x::after{transform:translate(-50%,-50%) rotate(-45deg)}
 .kvm-x:hover{background:var(--bg-hover);border-color:var(--border)}
 /* noVNC builds its own div > canvas inside this node, so the size has to be
    given to the container and not to the canvas directly. */
@@ -706,11 +698,29 @@ input:disabled,select:disabled{
 .kvm-foot{display:flex;align-items:center;gap:8px;padding:5px 10px;
   font-size:10.5px;color:var(--text-xfaint);border-top:1px solid var(--border-soft)}
 .kvm-hint{flex:1}
-.kvm-fit{font:inherit;font-size:10px;padding:2px 7px;border-radius:5px;
-  border:1px solid var(--border-soft);background:transparent;
-  color:var(--text-faint);cursor:pointer}
-.kvm-fit:hover,.kvm-fit.on{color:var(--accent-strong);border-color:var(--accent);
-  background:var(--accent-bg)}
+/* Standard window controls, drawn as strokes so they match the app's icons. */
+.kvm-ctrls{display:flex;align-items:center;gap:2px;margin-left:2px}
+.kvm-ctl{width:24px;height:22px;border:none;background:transparent;border-radius:4px;
+  cursor:pointer;position:relative;flex:none;color:var(--text-faint)}
+.kvm-ctl:hover{background:var(--bg-hover, rgba(255,255,255,.08));color:var(--text)}
+.kvm-ctl::before,.kvm-ctl::after{content:"";position:absolute;left:50%;top:50%;
+  background:currentColor;border-radius:1px}
+/* minimise: one bar */
+.kvm-min::before{width:10px;height:1.5px;transform:translate(-50%,-50%)}
+/* maximise: a square outline */
+.kvm-max::before{width:10px;height:8px;background:transparent;
+  border:1.5px solid currentColor;transform:translate(-50%,-50%)}
+.kvm-max::after{display:none}
+/* close: an X */
+.kvm-x::before{width:10px;height:1.5px;transform:translate(-50%,-50%) rotate(45deg)}
+.kvm-x::after{width:10px;height:1.5px;transform:translate(-50%,-50%) rotate(-45deg)}
+.kvm-win .kvm-x:hover{background:#c0392b;color:#fff}
+
+/* Minimised and maximised states, matching how desktop windows behave. */
+.kvm-win.is-min .kvm-screen,
+.kvm-win.is-min .kvm-foot{display:none}
+.kvm-win.is-max{border-radius:0}
+.kvm-win.is-max .kvm-screen{height:calc(100% - 34px - 27px)}
 .kvm-dead{position:absolute;inset:0;display:flex;flex-direction:column;gap:10px;
   align-items:center;justify-content:center;background:rgba(0,0,0,.78);
   color:var(--text);font-size:12.5px;text-align:center;padding:16px}
@@ -3572,15 +3582,23 @@ function kvmOpen(node){
   const bar = el('div', 'kvm-bar',
     `<span class="kvm-dot connecting"></span><b>${esc(node)}</b>`
     + `<span class="kvm-state">連線中…</span>`);
-  const close = el('button', 'kvm-x');
+  // Ordinary window controls: minimise / maximise / close, right of the title.
+  const ctrls = el('div', 'kvm-ctrls');
+  const minBtn = el('button', 'kvm-ctl kvm-min');
+  minBtn.innerHTML = '<span class="sr-only">最小化</span>';
+  minBtn.title = '最小化';
+  const maxBtn = el('button', 'kvm-ctl kvm-max');
+  maxBtn.innerHTML = '<span class="sr-only">放大視窗</span>';
+  maxBtn.title = '放大視窗';
+  const close = el('button', 'kvm-ctl kvm-x');
   close.innerHTML = '<span class="sr-only">關閉</span>';
-  close.onclick = () => kvmClose(id);
-  bar.appendChild(close);
+  close.title = '關閉';
+  ctrls.append(minBtn, maxBtn, close);
+  bar.appendChild(ctrls);
   const screen = el('div', 'kvm-screen');
   screen.tabIndex = 0;
   const foot = el('div', 'kvm-foot',
-    '<span class="kvm-hint">點畫面後可輸入 · 剪貼簿雙向同步</span>'
-    + '<button class="kvm-fit">縮放</button>');
+    '<span class="kvm-hint">點畫面後可輸入 · 剪貼簿雙向同步</span>');
   win.append(bar, screen, foot);
   document.getElementById('kvm-layer').appendChild(win);
 
@@ -3595,9 +3613,36 @@ function kvmOpen(node){
   win.style.top  = `${36 + slot * 34}px`;
   win.addEventListener('pointerdown', () => { win.style.zIndex = ++kvmZ; }, true);
   kvmMakeDraggable(entry);
-  foot.querySelector('.kvm-fit').onclick = () => {
-    if (entry.rfb) entry.rfb.scaleViewport = !entry.rfb.scaleViewport;
-    foot.querySelector('.kvm-fit').classList.toggle('on', entry.rfb && entry.rfb.scaleViewport);
+  // Window buttons behave like any desktop window. Maximise fills the viewport
+  // (the framebuffer is stretched to the box, so the picture grows with it);
+  // minimise collapses to the title bar; close disconnects.
+  entry.restore = null;
+  close.onclick = () => kvmClose(id);
+  minBtn.onclick = () => {
+    entry.win.classList.toggle('is-min');
+    if (entry.rfb) entry.rfb.scaleViewport = true;
+  };
+  maxBtn.onclick = () => {
+    if (entry.win.classList.contains('is-max')){
+      entry.win.classList.remove('is-max');
+      if (entry.restore){
+        win.style.left = entry.restore.left;
+        win.style.top = entry.restore.top;
+        win.style.width = entry.restore.width;
+        win.style.height = entry.restore.height;
+      }
+      maxBtn.title = '放大視窗';
+    } else {
+      entry.restore = {left: win.style.left, top: win.style.top,
+                       width: win.style.width, height: win.style.height};
+      entry.win.classList.add('is-max');
+      win.style.left = '12px';
+      win.style.top = '12px';
+      win.style.width = `${window.innerWidth - 24}px`;
+      win.style.height = `${window.innerHeight - 24}px`;
+      maxBtn.title = '還原視窗';
+    }
+    if (entry.rfb) entry.rfb.scaleViewport = true;
   };
   for (const t of ['pointerdown','pointerup']) win.addEventListener(t, e => e.stopPropagation());
   kvmStart(entry);
@@ -3662,7 +3707,8 @@ function kvmMakeDraggable(entry){
   const bar = entry.bar;
   let sx=0, sy=0, ox=0, oy=0, drag=false;
   bar.addEventListener('pointerdown', e => {
-    if (e.target.closest('.kvm-x')) return;
+    // Any control swallows the drag, otherwise setPointerCapture eats the click.
+    if (e.target.closest('.kvm-ctrls')) return;
     drag = true; sx = e.clientX; sy = e.clientY;
     const r = entry.win.getBoundingClientRect();
     ox = r.left; oy = r.top;
