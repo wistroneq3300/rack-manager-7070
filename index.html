@@ -1584,6 +1584,25 @@ function patchNodeCell(cell, n){
   setLine('bf4_os', n.bf4_os_ip, n.bf4_os_mac, n.bf4_os_up);
   setLine('bf4_bmc', n.bf4_bmc_ip, n.bf4_bmc_mac, n.bf4_bmc_up);
 
+  // A launcher is only useful when the address answers: no ping, no shell.
+  const LABELS = {os: 'OS', bmc: 'BMC', bf4_os: 'BF4 OS', bf4_bmc: 'BF4 BMC'};
+  const setGate = (kind, reach) => {
+    const b = cell.querySelector(`.term-btn[data-term-kind="${kind}"]`);
+    if (!b) return;
+    const blocked = reach === false;
+    b.disabled = blocked;
+    if (blocked) b.setAttribute('aria-disabled', 'true');
+    else b.removeAttribute('aria-disabled');
+    const label = LABELS[kind];
+    b.title = blocked
+      ? `${n.name} · ${label} 目前無回應，無法開啟終端`
+      : `開啟 ${n.name} · ${label} 終端`;
+  };
+  setGate('os', n.os_up);
+  setGate('bmc', n.bmc_up);
+  setGate('bf4_os', n.bf4_os_up);
+  setGate('bf4_bmc', n.bf4_bmc_up);
+
   // hostname row
   const hostEl = cell.querySelector('.node-host');
   const hostDiffers = n.os_hostname && n.os_hostname !== n.name;
@@ -1708,17 +1727,29 @@ function buildRack(data, focusKey){
       // The label column doubles as the terminal launcher: click a target
       // name and an SSH window opens for it. The address stays plain text so
       // it never competes with the button for attention.
-      const termBtn = (kind, label, extraClass) =>
-        `<button class="k term-btn ${extraClass || ''}" data-term-node="${esc(n.name)}"`
-        + ` data-term-kind="${kind}" title="開啟 ${esc(n.name)} · ${label} 終端">`
-        + `<span>${label}</span></button>`;
+      // Launchers only open when their address answered a ping: an unreachable
+      // target has nothing to log in to, so the button is greyed instead of
+      // failing silently after a click.
+      const termBtn = (kind, label, extraClass, reach) => {
+        const blocked = reach === false;
+        const tip = blocked
+          ? `${esc(n.name)} · ${label} 目前無回應，無法開啟終端`
+          : `開啟 ${esc(n.name)} · ${label} 終端`;
+        return `<button class="k term-btn ${extraClass || ''}"`
+          + ` data-term-node="${esc(n.name)}" data-term-kind="${kind}"`
+          + (blocked ? ' disabled aria-disabled="true"' : '')
+          + ` title="${tip}">`
+          + `<span>${label}</span></button>`;
+      };
 
       cell.appendChild(el('div', 'node-ips',
-        termBtn('os', 'OS') + ipCell(esc(n.os_ip), n.os_mac, 'os')
-        + termBtn('bmc', 'BMC') + ipCell(esc(n.bmc_ip), n.bmc_mac, 'bmc')
+        termBtn('os', 'OS', '', n.os_up) + ipCell(esc(n.os_ip), n.os_mac, 'os')
+        + termBtn('bmc', 'BMC', '', n.bmc_up) + ipCell(esc(n.bmc_ip), n.bmc_mac, 'bmc')
         + (n.bf4_os_ip || n.bf4_bmc_ip
-          ? termBtn('bf4_os', 'BF4 OS', 'bf4-k') + bf4Cell(n.bf4_os_ip, n.bf4_os_up, n.bf4_os_mac, 'bf4_os')
-            + termBtn('bf4_bmc', 'BF4 BMC', 'bf4-k') + bf4Cell(n.bf4_bmc_ip, n.bf4_bmc_up, n.bf4_bmc_mac, 'bf4_bmc')
+          ? termBtn('bf4_os', 'BF4 OS', 'bf4-k', n.bf4_os_up)
+            + bf4Cell(n.bf4_os_ip, n.bf4_os_up, n.bf4_os_mac, 'bf4_os')
+            + termBtn('bf4_bmc', 'BF4 BMC', 'bf4-k', n.bf4_bmc_up)
+            + bf4Cell(n.bf4_bmc_ip, n.bf4_bmc_up, n.bf4_bmc_mac, 'bf4_bmc')
           : '')));
       // Only worth a row when it disagrees with the name this card already
       // shows. A node that names itself "localhost-n3" is the case that
